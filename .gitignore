@@ -25,4 +25,4 @@ converter/go.work.sum
 converter/.env
 
 # others
-converter/.null-ls*
+converter/*/.null-ls*

@@ -9,7 +9,10 @@ import (
 	"gonum.org/v1/gonum/graph/topo"
 )
 
-type Graph = simple.UndirectedGraph
+type (
+	Graph       = simple.UndirectedGraph
+	NodeIdTuple = Tuple[int64, int64]
+)
 
 // return the valid topologies in the given array
 func ValidateTopologies(tops []Graph) []Graph {

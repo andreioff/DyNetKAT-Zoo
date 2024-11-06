@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 
+	"utwente.nl/topology-to-dynetkat-coverter/convert"
 	"utwente.nl/topology-to-dynetkat-coverter/util"
 )
 
@@ -15,5 +16,8 @@ func main() {
 	}
 
 	gs := util.GraphMLsToGraphs(graphMLs)
-	util.ValidateTopologies(gs)
+	validTopologies := util.ValidateTopologies(gs)
+
+	net := convert.NewNetwork(validTopologies[0])
+	log.Printf("%d", net.PortNr())
 }

@@ -23,3 +23,6 @@ converter/go.work.sum
 
 # env file
 converter/.env
+
+# others
+converter/.null-ls*

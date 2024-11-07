@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 
+	"gonum.org/v1/gonum/graph"
 	"gonum.org/v1/gonum/graph/simple"
 	"gonum.org/v1/gonum/graph/topo"
 )
@@ -54,4 +55,58 @@ func isConnected(top Graph) error {
 	}
 
 	return nil
+}
+
+func GetNodesArrayFromIter(g Graph) []graph.Node {
+	iter := g.Nodes()
+	switches := []graph.Node{}
+
+	for iter.Next() {
+		switches = append(switches, iter.Node())
+	}
+
+	return switches
+}
+
+/*
+returns -1 if  a < b
+returns 0 if a = b
+returns 1 if a > b
+*/
+func GraphCmp(a Graph, b Graph) int {
+	aNodes := a.Nodes().Len()
+	bNodes := b.Nodes().Len()
+	aEdges := a.Edges().Len()
+	bEdges := b.Edges().Len()
+
+	if aNodes == bNodes && aEdges == bEdges {
+		return 0
+	}
+
+	if aNodes < bNodes ||
+		(aNodes == bNodes && aEdges < bEdges) {
+		return -1
+	}
+
+	return 1
+}
+
+func GetIncidentEdges(g Graph, n graph.Node) ([]graph.Edge, error) {
+	if n == nil {
+		return []graph.Edge{}, errors.New("Node is nil!")
+	}
+
+	if g.Node(n.ID()) == nil {
+		return []graph.Edge{}, errors.New("Node is not part of the graph!")
+	}
+
+	incidentEdges := []graph.Edge{}
+	iter := g.Edges()
+
+	for iter.Next() {
+		if iter.Edge().To().ID() == n.ID() || iter.Edge().From().ID() == n.ID() {
+			incidentEdges = append(incidentEdges, iter.Edge())
+		}
+	}
+	return incidentEdges, nil
 }

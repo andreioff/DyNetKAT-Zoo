@@ -3,12 +3,14 @@ package convert
 type Host struct {
 	id         int64
 	switchPort int64
+	sw         *Switch
 }
 
-func NewHost(id, switchPort int64) *Host {
+func NewHost(id, switchPort int64, sw *Switch) *Host {
 	return &Host{
 		id:         id,
 		switchPort: switchPort,
+		sw:         sw,
 	}
 }
 

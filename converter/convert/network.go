@@ -10,15 +10,6 @@ import (
 	"utwente.nl/topology-to-dynetkat-coverter/util"
 )
 
-/*
-  ~~ Generate shortest path between every node in the topology
-  ~~ Assign ports to each edge
-  ~~ Randomly distribute hosts in the network
-    ~~ Each host should be linked to a different port on the switch
-  ~~ At every node, map the ports to their corresponding destinations (to be able to decide where to send each packet, this also means that the NetKAT policies will operate on 2 packet fields (for now))
-  ~~ For each pair of hosts, use the computed shortest paths to generate NetKAT policies that encode the flow between these hosts
-*/
-
 // TODO Check if it is better to put these into an init function
 var (
 	SEED    int64     = 3
@@ -30,7 +21,7 @@ type Network struct {
 	shortestPaths map[int64]map[int64][]*Switch
 
 	switches []Switch
-	hosts    []*Host
+	hosts    []Host
 	portNr   int64
 	hostId   int64
 }
@@ -49,7 +40,7 @@ func NewNetwork(topo util.Graph) (*Network, error) {
 		switches:      switches,
 		portNr:        portNr,
 		hostId:        0,
-		hosts:         []*Host{},
+		hosts:         []Host{},
 	}, nil
 }
 
@@ -58,9 +49,13 @@ func (n *Network) PortNr() int64 {
 }
 
 func makeSwitchesFromTopology(topo util.Graph, portNr *int64) ([]Switch, error) {
-	switches := []Switch{}
-	iter := topo.Nodes()
+	if portNr == nil {
+		return []Switch{}, errors.New("Nil portNr argument!")
+	}
 
+	switches := []Switch{}
+
+	iter := topo.Nodes()
 	for iter.Next() {
 		links, err := makeLinks(topo, iter.Node(), portNr)
 		if err != nil {
@@ -75,6 +70,10 @@ func makeSwitchesFromTopology(topo util.Graph, portNr *int64) ([]Switch, error) 
 }
 
 func makeLinks(topo util.Graph, node graph.Node, portNr *int64) ([]Link, error) {
+	if portNr == nil {
+		return []Link{}, errors.New("Nil portNr argument!")
+	}
+
 	incidentEdges, err := util.GetIncidentEdges(topo, node)
 	if err != nil {
 		return []Link{}, err
@@ -129,24 +128,33 @@ func computeShortestPaths(topo util.Graph, switches []Switch) map[int64]map[int6
 	return switchPaths
 }
 
-func (n *Network) assignHosts(hostsNr int64) []*Host {
+func (n *Network) assignHosts(hostsNr int64) error {
 	switchesLen := len(n.switches)
-	hosts := []*Host{}
+	hosts := []Host{}
 
 	for range hostsNr {
 		randSw := &n.switches[randGen.Intn(switchesLen)]
-		newHost := NewHost(n.hostId, n.portNr, randSw)
+
+		newHost, err := NewHost(n.hostId, n.portNr, randSw)
+		if err != nil {
+			return err
+		}
 		hosts = append(hosts, newHost)
-		randSw.AddHost(*newHost)
+		randSw.AddHost(&newHost)
+
 		n.hostId++
 		n.portNr++
 	}
 	n.hosts = hosts
 
-	return hosts
+	return nil
 }
 
-func (n *Network) populateDestinationTables(h1, h2 Host) {
+func (n *Network) populateDestinationTables(h1, h2 *Host) error {
+	if h1 == nil || h2 == nil {
+		return errors.New("Null arguments!")
+	}
+
 	path := n.shortestPaths[h1.sw.topoNode.ID()][h2.sw.topoNode.ID()]
 
 	receivingPort := h1.SwitchPort()
@@ -164,6 +172,7 @@ func (n *Network) populateDestinationTables(h1, h2 Host) {
 	// TODO Not a huge fan of this. To be refactored...
 	h2.sw.destTable[h2.ID()] = make(map[int64]int64)
 	h2.sw.destTable[h2.ID()][receivingPort] = h2.switchPort
+	return nil
 }
 
 func (n *Network) AddAndConnectHosts(hostsNr int64) error {
@@ -171,11 +180,22 @@ func (n *Network) AddAndConnectHosts(hostsNr int64) error {
 		return errors.New("Number of hosts must be at least 2!")
 	}
 
-	hosts := n.assignHosts(hostsNr)
-	for i := range len(hosts) {
-		for j := i + 1; j < len(hosts); j++ {
-			n.populateDestinationTables(*hosts[i], *hosts[j])
-			n.populateDestinationTables(*hosts[j], *hosts[i])
+	err := n.assignHosts(hostsNr)
+	if err != nil {
+		return err
+	}
+
+	for i := range len(n.hosts) {
+		for j := i + 1; j < len(n.hosts); j++ {
+			err := n.populateDestinationTables(&n.hosts[i], &n.hosts[j])
+			if err != nil {
+				return err
+			}
+
+			err = n.populateDestinationTables(&n.hosts[j], &n.hosts[i])
+			if err != nil {
+				return err
+			}
 		}
 	}
 	return nil

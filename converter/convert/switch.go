@@ -6,7 +6,7 @@ import (
 
 type Switch struct {
 	topoNode  graph.Node
-	hosts     []Host
+	hosts     []*Host
 	destTable map[int64]map[int64]int64
 
 	links []Link // outgoing links
@@ -15,7 +15,7 @@ type Switch struct {
 func NewSwitch(node graph.Node, links []Link) *Switch {
 	return &Switch{
 		topoNode: node,
-		hosts:    []Host{},
+		hosts:    []*Host{},
 		destTable: make(
 			map[int64]map[int64]int64,
 		), // maps host destination id and incoming port to outgoing port
@@ -27,11 +27,11 @@ func (s *Switch) TopoNode() graph.Node {
 	return s.topoNode
 }
 
-func (s *Switch) Hosts() []Host {
+func (s *Switch) Hosts() []*Host {
 	return s.hosts
 }
 
-func (s *Switch) AddHost(h Host) {
+func (s *Switch) AddHost(h *Host) {
 	s.hosts = append(s.hosts, h)
 }
 

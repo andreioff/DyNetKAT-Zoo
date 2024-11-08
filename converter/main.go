@@ -9,7 +9,10 @@ import (
 	"utwente.nl/topology-to-dynetkat-coverter/util"
 )
 
-var DIR = "../topologyzoo/sources/graphml/"
+var (
+	DIR     = "../topologyzoo/sources/graphml/"
+	HOST_NR = 5
+)
 
 func main() {
 	graphMLs, err := util.GetGraphMLs(DIR)
@@ -23,15 +26,20 @@ func main() {
 	// sort topologies in ascending order based on their nr of nodes and edges
 	slices.SortFunc(validTopologies, util.GraphCmp)
 
-	n, err := convert.NewNetwork(validTopologies[0])
-	if err != nil {
-		log.Fatalln(err)
+	networks := []*convert.Network{}
+	for _, topo := range validTopologies {
+		n, err := convert.NewNetwork(topo)
+		if err != nil {
+			log.Fatalln(err)
+		}
+
+		err = n.AddAndConnectHosts(5)
+		if err != nil {
+			log.Fatalln(err)
+		}
+
+		networks = append(networks, n)
 	}
 
-	err = n.AddAndConnectHosts(2)
-	if err != nil {
-		log.Fatalln(err)
-	}
-
-	log.Printf("\n%v\n", n)
+	log.Printf("\n%v\n", networks[0])
 }

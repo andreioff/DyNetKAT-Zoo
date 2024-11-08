@@ -10,11 +10,13 @@ import (
 	"utwente.nl/topology-to-dynetkat-coverter/util"
 )
 
-// TODO Check if it is better to put these into an init function
-var (
-	SEED    int64     = 3
-	randGen rand.Rand = *rand.New(rand.NewSource(SEED))
-)
+const SEED int64 = 3
+
+var randGen rand.Rand
+
+func init() {
+	randGen = *rand.New(rand.NewSource(SEED))
+}
 
 type Network struct {
 	topology      util.Graph

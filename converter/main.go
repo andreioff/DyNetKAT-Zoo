@@ -4,12 +4,11 @@ import (
 	"log"
 	"slices"
 
-	//"utwente.nl/topology-to-dynetkat-coverter/convert"
 	"utwente.nl/topology-to-dynetkat-coverter/convert"
 	"utwente.nl/topology-to-dynetkat-coverter/util"
 )
 
-var (
+const (
 	DIR     = "../topologyzoo/sources/graphml/"
 	HOST_NR = 5
 )

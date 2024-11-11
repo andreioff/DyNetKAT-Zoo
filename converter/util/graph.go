@@ -11,8 +11,7 @@ import (
 )
 
 type (
-	Graph       = simple.UndirectedGraph
-	NodeIdTuple = Tuple[int64, int64]
+	Graph = simple.UndirectedGraph
 )
 
 // return the valid topologies in the given array

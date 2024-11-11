@@ -92,8 +92,9 @@ func (f *LatexEncoder) encodeSwitch(sw convert.Switch) string {
 	swName := f.encodeSwitchName(sw)
 
 	prefix := ""
-	for dstHostId, inPortToOutPort := range sw.DestTable() {
-		for inPort, outPort := range inPortToOutPort {
+	for hostIdInPort, outPorts := range sw.DestTable() {
+		dstHostId, inPort := hostIdInPort.Fst, hostIdInPort.Snd
+		for _, outPort := range outPorts {
 			fmtDstTableEntries = append(fmtDstTableEntries, fmt.Sprintf(
 				"%s((dst %s %d) %s (port %s %d) %s (port %s %d)) %s %s",
 				prefix, f.sym.EQ,

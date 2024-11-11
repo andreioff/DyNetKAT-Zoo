@@ -19,7 +19,7 @@ func init() {
 
 type Network struct {
 	topology      util.Graph
-	shortestPaths map[int64]map[int64][]*Switch
+	shortestPaths map[util.I64Tup][]*Switch // maps a tuple of topology node ids to a switch path
 
 	switches []Switch
 	hosts    []Host
@@ -111,14 +111,13 @@ func nodePathToSwitchPath(path []graph.Node, nodeToSwitch map[int64]*Switch) []*
 	return switchPath
 }
 
-func computeShortestPaths(topo util.Graph, switches []Switch) map[int64]map[int64][]*Switch {
+func computeShortestPaths(topo util.Graph, switches []Switch) map[util.I64Tup][]*Switch {
 	nodePaths := path.DijkstraAllPaths(&topo)
 	nodeToSwitch := mapNodeToSwitch(switches)
-	switchPaths := make(map[int64]map[int64][]*Switch)
+	switchPaths := make(map[util.I64Tup][]*Switch)
 
 	for i := range len(switches) {
 		sw1Id := switches[i].topoNode.ID()
-		switchPaths[sw1Id] = make(map[int64][]*Switch)
 
 		for j := range len(switches) {
 			if i == j {
@@ -127,9 +126,13 @@ func computeShortestPaths(topo util.Graph, switches []Switch) map[int64]map[int6
 
 			sw2Id := switches[j].topoNode.ID()
 			nodePath, _, _ := nodePaths.Between(sw1Id, sw2Id)
-			switchPaths[sw1Id][sw2Id] = nodePathToSwitchPath(nodePath, nodeToSwitch)
+			switchPaths[util.NewI64Tup(sw1Id, sw2Id)] = nodePathToSwitchPath(
+				nodePath,
+				nodeToSwitch,
+			)
 		}
 	}
+
 	return switchPaths
 }
 
@@ -160,7 +163,7 @@ func (n *Network) populateDestinationTables(h1, h2 *Host) error {
 		return errors.New("Null arguments!")
 	}
 
-	path := n.shortestPaths[h1.sw.topoNode.ID()][h2.sw.topoNode.ID()]
+	path := n.shortestPaths[util.NewI64Tup(h1.sw.topoNode.ID(), h2.sw.topoNode.ID())]
 
 	receivingPort := h1.SwitchPort()
 	for i := range len(path) - 1 {
@@ -168,15 +171,12 @@ func (n *Network) populateDestinationTables(h1, h2 *Host) error {
 		nextSwId := path[i+1].topoNode.ID()
 		link := currSw.FindLink(nextSwId)
 
-		currSw.destTable[h2.ID()] = make(map[int64]int64)
-		currSw.destTable[h2.ID()][receivingPort] = link.FromPort()
-		currSw.destTable[h2.ID()][link.FromPort()] = link.ToPort()
+		currSw.AddDestEntry(h2.ID(), receivingPort, link.FromPort())
+		currSw.AddDestEntry(h2.ID(), link.FromPort(), link.ToPort())
 		receivingPort = link.ToPort()
 	}
 
-	// TODO Not a huge fan of this. To be refactored...
-	h2.sw.destTable[h2.ID()] = make(map[int64]int64)
-	h2.sw.destTable[h2.ID()][receivingPort] = h2.switchPort
+	h2.sw.AddDestEntry(h2.ID(), receivingPort, h2.SwitchPort())
 	return nil
 }
 

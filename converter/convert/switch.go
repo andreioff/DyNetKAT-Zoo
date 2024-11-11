@@ -31,6 +31,10 @@ func (s *Switch) Hosts() []*Host {
 	return s.hosts
 }
 
+func (s *Switch) DestTable() map[int64]map[int64]int64 {
+	return s.destTable
+}
+
 func (s *Switch) AddHost(h *Host) {
 	s.hosts = append(s.hosts, h)
 }

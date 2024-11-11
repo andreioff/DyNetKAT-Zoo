@@ -2,7 +2,6 @@ package convert
 
 import (
 	"errors"
-	"fmt"
 	"math/rand"
 
 	"gonum.org/v1/gonum/graph"
@@ -48,6 +47,10 @@ func NewNetwork(topo util.Graph) (*Network, error) {
 
 func (n *Network) PortNr() int64 {
 	return n.portNr
+}
+
+func (n *Network) Switches() []Switch {
+	return n.switches
 }
 
 func makeSwitchesFromTopology(topo util.Graph, portNr *int64) ([]Switch, error) {
@@ -201,32 +204,4 @@ func (n *Network) AddAndConnectHosts(hostsNr int64) error {
 		}
 	}
 	return nil
-}
-
-func (n *Network) String() string {
-	str := ""
-
-	for _, h := range n.hosts {
-		str += fmt.Sprintf("H%3d: Sw: %3d, Port: %3d\n", h.ID(), h.sw.topoNode.ID(), h.SwitchPort())
-	}
-
-	str += "\n\n"
-
-	tab := "       "
-	for _, sw := range n.switches {
-		str += fmt.Sprintf("SW%3d: \n", sw.topoNode.ID())
-		for dstHostId, inPortToOutPort := range sw.destTable {
-			for inPort, outPort := range inPortToOutPort {
-				str += fmt.Sprintf(
-					"%s(dst = %d) . (port = %d) . (port <- %d) + \n",
-					tab,
-					dstHostId,
-					inPort,
-					outPort,
-				)
-			}
-		}
-	}
-
-	return str
 }

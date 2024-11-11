@@ -2,7 +2,9 @@ package convert
 
 import (
 	"errors"
+	"maps"
 	"math/rand"
+	"slices"
 
 	"gonum.org/v1/gonum/graph"
 	"gonum.org/v1/gonum/graph/path"
@@ -137,12 +139,14 @@ func computeShortestPaths(topo util.Graph, switches []Switch) map[util.I64Tup][]
 }
 
 func (n *Network) assignHosts(hostsNr int64) error {
-	switchesLen := len(n.switches)
 	hosts := []Host{}
 
-	for range hostsNr {
-		randSw := &n.switches[randGen.Intn(switchesLen)]
+	randSws, err := n.pickRandomSwitches(hostsNr)
+	if err != nil {
+		return err
+	}
 
+	for _, randSw := range randSws {
 		newHost, err := NewHost(n.hostId, n.portNr, randSw)
 		if err != nil {
 			return err
@@ -156,6 +160,36 @@ func (n *Network) assignHosts(hostsNr int64) error {
 	n.hosts = hosts
 
 	return nil
+}
+
+// Turns out that the switches order in the array is not static,
+// so we must pick them by ID
+func (n *Network) pickRandomSwitches(picksNr int64) ([]*Switch, error) {
+	if len(n.switches) == 0 {
+		return []*Switch{}, errors.New("Network has no switches!")
+	}
+	nodeToSw := mapNodeToSwitch(n.switches)
+	nodeIds := slices.Collect(maps.Keys(nodeToSw))
+	minId := slices.Min(nodeIds)
+	maxId := int(slices.Max(nodeIds))
+
+	if minId < 0 {
+		panic("Found negative node ID when picking random switches!")
+	}
+
+	randSws := []*Switch{}
+	for picksNr > 0 {
+		randSwId := int64(randGen.Intn(maxId))
+
+		sw, exists := nodeToSw[randSwId]
+		if !exists {
+			continue
+		}
+		randSws = append(randSws, sw)
+		picksNr--
+	}
+
+	return randSws, nil
 }
 
 func (n *Network) populateDestinationTables(h1, h2 *Host) error {

@@ -2,6 +2,7 @@ package util
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"os"
 	"strings"
@@ -90,8 +91,10 @@ func GraphMLToGraph(gml graphml.GraphML) (Graph, error) {
 	return g, nil
 }
 
-func GraphMLsToGraphs(gmls []graphml.GraphML) []Graph {
-	gs := []Graph{}
+func GraphMLsToGraphs(gmls []graphml.GraphML) map[string]Graph {
+	gs := make(map[string]Graph)
+	id := 0
+
 	for _, gml := range gmls {
 		g, err := GraphMLToGraph(gml)
 		if err != nil {
@@ -102,7 +105,15 @@ func GraphMLsToGraphs(gmls []graphml.GraphML) []Graph {
 			)
 			continue
 		}
-		gs = append(gs, g)
+
+		if _, exists := gs[gml.Description]; exists {
+			name := fmt.Sprintf("%s#%d", gml.Description, id)
+			gs[name] = g
+			id++
+			continue
+		}
+
+		gs[gml.Description] = g
 	}
 	return gs
 }

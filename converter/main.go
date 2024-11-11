@@ -2,8 +2,9 @@ package main
 
 import (
 	"log"
+	"maps"
 	"os"
-	//"slices"
+	"slices"
 
 	"utwente.nl/topology-to-dynetkat-coverter/convert"
 	"utwente.nl/topology-to-dynetkat-coverter/convert/encode"
@@ -15,7 +16,7 @@ const (
 	OUTPUT_DIR = "./output/"
 	FILE_PERM  = 0755
 	HOST_NR    = 5
-	INDEX      = 2 // 23 switches
+	NETWORK_ID = "Atmnet.graphml" // 21 switches
 )
 
 func main() {
@@ -25,33 +26,33 @@ func main() {
 	}
 
 	gs := util.GraphMLsToGraphs(graphMLs)
-	validTopologies := util.ValidateTopologies(gs)
+	util.ValidateTopologies(slices.Collect(maps.Values(gs)))
 
-	// sort topologies in ascending order based on their nr of nodes and edges
-	// slices.SortFunc(validTopologies, util.GraphCmp)
+	log.Printf("Processing network with topology id: %s", NETWORK_ID)
+	topo := gs[NETWORK_ID]
 
-	networks := []*convert.Network{}
-	for _, topo := range validTopologies {
-		n, err := convert.NewNetwork(topo)
-		if err != nil {
-			log.Fatalln(err)
-		}
+	if util.ValidateTopology(topo) != nil {
+		log.Fatalln("Invalid network!")
+	}
 
-		err = n.AddAndConnectHosts(HOST_NR)
-		if err != nil {
-			log.Fatalln(err)
-		}
+	n, err := convert.NewNetwork(topo)
+	if err != nil {
+		log.Fatalln(err)
+	}
 
-		networks = append(networks, n)
+	err = n.AddAndConnectHosts(HOST_NR)
+	if err != nil {
+		log.Fatalln(err)
 	}
 
 	encoder := encode.NewLatexEncoder()
-	fmtNet, err := encoder.Encode(networks[INDEX])
+	fmtNet, err := encoder.Encode(n)
 	if err != nil {
 		log.Fatalln(err)
 	}
 
 	writeToFile("output.txt", fmtNet)
+	log.Println("Done!")
 }
 
 func writeToFile(fileName, data string) {

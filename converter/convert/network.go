@@ -3,7 +3,6 @@ package convert
 import (
 	"errors"
 	"maps"
-	"math/rand"
 	"slices"
 
 	"gonum.org/v1/gonum/graph"
@@ -11,22 +10,17 @@ import (
 	"utwente.nl/topology-to-dynetkat-coverter/util"
 )
 
-const SEED int64 = 3
-
-var randGen rand.Rand
-
-func init() {
-	randGen = *rand.New(rand.NewSource(SEED))
-}
-
 type Network struct {
 	topology      util.Graph
 	shortestPaths map[util.I64Tup][]*Switch // maps a tuple of topology node ids to a switch path
 
-	switches []Switch
-	hosts    []Host
-	portNr   int64
-	hostId   int64
+	switches   []Switch
+	nodeIdToSw map[int64]*Switch
+
+	controllers []Controller
+	hosts       []Host
+	portNr      int64
+	hostId      int64
 }
 
 func NewNetwork(topo util.Graph) (*Network, error) {
@@ -41,10 +35,21 @@ func NewNetwork(topo util.Graph) (*Network, error) {
 		topology:      topo,
 		shortestPaths: computeShortestPaths(topo, switches),
 		switches:      switches,
+		nodeIdToSw:    mapNodeToSwitch(switches),
 		portNr:        portNr,
 		hostId:        0,
 		hosts:         []Host{},
 	}, nil
+}
+
+func mapNodeToSwitch(switches []Switch) map[int64]*Switch {
+	nodeIdToSwitch := make(map[int64]*Switch, len(switches))
+
+	for _, sw := range switches {
+		nodeIdToSwitch[sw.topoNode.ID()] = &sw
+	}
+
+	return nodeIdToSwitch
 }
 
 func (n *Network) PortNr() int64 {
@@ -53,6 +58,10 @@ func (n *Network) PortNr() int64 {
 
 func (n *Network) Switches() []Switch {
 	return n.switches
+}
+
+func (n *Network) Controllers() []Controller {
+	return n.controllers
 }
 
 func makeSwitchesFromTopology(topo util.Graph, portNr *int64) ([]Switch, error) {
@@ -95,16 +104,6 @@ func makeLinks(topo util.Graph, node graph.Node, portNr *int64) ([]Link, error) 
 	return links, nil
 }
 
-func mapNodeToSwitch(switches []Switch) map[int64]*Switch {
-	nodeIdToSwitch := make(map[int64]*Switch, len(switches))
-
-	for _, sw := range switches {
-		nodeIdToSwitch[sw.topoNode.ID()] = &sw
-	}
-
-	return nodeIdToSwitch
-}
-
 func nodePathToSwitchPath(path []graph.Node, nodeToSwitch map[int64]*Switch) []*Switch {
 	switchPath := []*Switch{}
 	for _, node := range path {
@@ -138,55 +137,57 @@ func computeShortestPaths(topo util.Graph, switches []Switch) map[util.I64Tup][]
 	return switchPaths
 }
 
-func (n *Network) assignHosts(hostsNr int64) error {
+func (n *Network) assignHosts(hostsNr uint) error {
 	hosts := []Host{}
 
-	randSws, err := n.pickRandomSwitches(hostsNr)
+	hosts, err := n.CreateHosts(hostsNr)
 	if err != nil {
 		return err
 	}
 
-	for _, randSw := range randSws {
-		newHost, err := NewHost(n.hostId, n.portNr, randSw)
-		if err != nil {
-			return err
-		}
-		hosts = append(hosts, newHost)
-		randSw.AddHost(&newHost)
-
-		n.hostId++
-		n.portNr++
+	for _, h := range hosts {
+		h.sw.AddHost(&h)
 	}
 	n.hosts = hosts
 
 	return nil
 }
 
+func (n *Network) CreateHosts(hostsNr uint) ([]Host, error) {
+	hosts := []Host{}
+
+	randSws, err := n.pickRandomSwitches(hostsNr)
+	if err != nil {
+		return []Host{}, err
+	}
+
+	for _, randSw := range randSws {
+		newHost, err := NewHost(n.hostId, n.portNr, randSw)
+		if err != nil {
+			return []Host{}, err
+		}
+		hosts = append(hosts, newHost)
+
+		n.hostId++
+		n.portNr++
+	}
+
+	return hosts, nil
+}
+
 // Turns out that the switches order in the array is not static,
 // so we must pick them by ID
-func (n *Network) pickRandomSwitches(picksNr int64) ([]*Switch, error) {
+func (n *Network) pickRandomSwitches(picksNr uint) ([]*Switch, error) {
 	if len(n.switches) == 0 {
 		return []*Switch{}, errors.New("Network has no switches!")
 	}
-	nodeToSw := mapNodeToSwitch(n.switches)
-	nodeIds := slices.Collect(maps.Keys(nodeToSw))
-	minId := slices.Min(nodeIds)
-	maxId := int(slices.Max(nodeIds))
+	nodeIds := slices.Collect(maps.Keys(n.nodeIdToSw))
 
-	if minId < 0 {
-		panic("Found negative node ID when picking random switches!")
-	}
+	randIdPicks := util.RandomFromArrayWithReplc(nodeIds, picksNr)
 
 	randSws := []*Switch{}
-	for picksNr > 0 {
-		randSwId := int64(randGen.Intn(maxId))
-
-		sw, exists := nodeToSw[randSwId]
-		if !exists {
-			continue
-		}
-		randSws = append(randSws, sw)
-		picksNr--
+	for _, nodeId := range randIdPicks {
+		randSws = append(randSws, n.nodeIdToSw[nodeId])
 	}
 
 	return randSws, nil
@@ -197,24 +198,65 @@ func (n *Network) populateDestinationTables(h1, h2 *Host) error {
 		return errors.New("Null arguments!")
 	}
 
-	path := n.shortestPaths[util.NewI64Tup(h1.sw.topoNode.ID(), h2.sw.topoNode.ID())]
+	entries, err := n.GetDestEntriesForSwitchPath(h1.sw, h2.sw, h1.SwitchPort(), h2.SwitchPort())
+	if err != nil {
+		return err
+	}
 
-	receivingPort := h1.SwitchPort()
+	for nodeId, portTuples := range entries {
+		for _, fromPortToPort := range portTuples {
+			n.nodeIdToSw[nodeId].AddDestEntry(h2.ID(), fromPortToPort.Fst, fromPortToPort.Snd)
+		}
+	}
+
+	return nil
+}
+
+// Maps the switches on the path between 'srcSw' and 'destSw' to their
+// corresponding destination table entries for forwarding packets
+// from 'srcSw', port 'inPortSrcSw' to 'destSw', port 'outPortDestSw'
+func (n *Network) GetDestEntriesForSwitchPath(
+	srcSw *Switch,
+	destSw *Switch,
+	inPortSrcSw int64,
+	outPortDestSw int64,
+) (map[int64][]util.I64Tup, error) {
+	if srcSw == nil || destSw == nil {
+		return make(map[int64][]util.I64Tup), errors.New("Null arguments!")
+	}
+
+	path, exists := n.shortestPaths[util.NewI64Tup(srcSw.topoNode.ID(), destSw.topoNode.ID())]
+	if !exists {
+		return make(
+				map[int64][]util.I64Tup,
+			), errors.New(
+				"Path between given switches could not be found!",
+			)
+	}
+
+	entries := make(map[int64][]util.I64Tup)
+	receivingPort := inPortSrcSw
+
 	for i := range len(path) - 1 {
 		currSw := path[i]
 		nextSwId := path[i+1].topoNode.ID()
 		link := currSw.FindLink(nextSwId)
 
-		currSw.AddDestEntry(h2.ID(), receivingPort, link.FromPort())
-		currSw.AddDestEntry(h2.ID(), link.FromPort(), link.ToPort())
+		inPortOutPort := util.I64Tup{Fst: receivingPort, Snd: link.FromPort()}
+		outPortNextSwInPort := util.I64Tup{Fst: link.FromPort(), Snd: link.ToPort()}
+
+		entries[currSw.topoNode.ID()] = []util.I64Tup{inPortOutPort, outPortNextSwInPort}
+
 		receivingPort = link.ToPort()
 	}
 
-	h2.sw.AddDestEntry(h2.ID(), receivingPort, h2.SwitchPort())
-	return nil
+	inPortOutPort := util.I64Tup{Fst: receivingPort, Snd: outPortDestSw}
+	entries[destSw.topoNode.ID()] = []util.I64Tup{inPortOutPort}
+
+	return entries, nil
 }
 
-func (n *Network) AddAndConnectHosts(hostsNr int64) error {
+func (n *Network) AddAndConnectHosts(hostsNr uint) error {
 	if hostsNr < 2 {
 		return errors.New("Number of hosts must be at least 2!")
 	}
@@ -236,6 +278,38 @@ func (n *Network) AddAndConnectHosts(hostsNr int64) error {
 				return err
 			}
 		}
+	}
+	return nil
+}
+
+/*
+Adds 'controllersNr' controllers to the network, randomly assigning them to the network' switches.
+All switches in the network are equally divided between these controllers. If the number of switches
+cannot be equally divided, the remainder is uniformly distributed again, 1 switch per controller
+starting from the first controller.
+*/
+func (n *Network) AddControllers(controllersNr uint) error {
+	if controllersNr == 0 {
+		return errors.New("Number of controllers to be added must be at least 1")
+	}
+
+	if int(controllersNr) > len(n.switches) {
+		return errors.New("Cannot have more controllers than switches")
+	}
+
+	nodeIds := slices.Collect(maps.Keys(n.nodeIdToSw))
+	randOrder, err := util.RandomFromArray(nodeIds, uint(len(nodeIds)))
+	if err != nil {
+		return err
+	}
+
+	slices := util.SplitArray(randOrder, controllersNr)
+	for _, slice := range slices {
+		switches := []*Switch{}
+		for _, nodeId := range slice {
+			switches = append(switches, n.nodeIdToSw[nodeId])
+		}
+		n.controllers = append(n.controllers, *NewController(switches))
 	}
 	return nil
 }

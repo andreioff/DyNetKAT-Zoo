@@ -13,7 +13,7 @@ import (
 const (
 	DIR        = "../topologyzoo/sources/graphml/"
 	OUTPUT_DIR = "./output/"
-	HOST_NR    = 5
+	HOSTS_NR   = 5
 	NETWORK_ID = "Atmnet.graphml" // 21 switches
 )
 
@@ -33,7 +33,10 @@ func main() {
 		log.Fatalln("Invalid network!")
 	}
 
-	network, err := behavior.NewNetworkWithBehavior(topo, &behavior.OutsideHostConn{})
+	network, err := behavior.NewNetworkWithBehavior(
+		topo,
+		&behavior.OutsideHostConn{},
+	)
 	if err != nil {
 		log.Fatalln(err)
 	}

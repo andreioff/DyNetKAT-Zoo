@@ -1,15 +1,36 @@
 package behavior
 
-import "utwente.nl/topology-to-dynetkat-coverter/convert"
+import (
+	"utwente.nl/topology-to-dynetkat-coverter/convert"
+)
 
-const HOST_NR = 5
+const (
+	HOSTS_NR         = 5
+	OUTSIDE_HOSTS_NR = 5
+	CONTROLLERS_NR   = 1
+)
 
 type OutsideHostConn struct{}
 
 func (_ *OutsideHostConn) ModifyNetwork(n *convert.Network) error {
-	err := n.AddAndConnectHosts(HOST_NR)
+	err := n.AddAndConnectHosts(HOSTS_NR)
 	if err != nil {
 		return err
 	}
+
+	err = n.AddControllers(CONTROLLERS_NR)
+	if err != nil {
+		return err
+	}
+
+	newHosts, err := n.CreateHosts(OUTSIDE_HOSTS_NR)
+	if err != nil {
+		return err
+	}
+
+	// TODO the controllers will modify the network to
+	// allow each new host to communicate to all hosts
+	// already in the network (communication between the new hosts is not necessary at this point)
+
 	return nil
 }

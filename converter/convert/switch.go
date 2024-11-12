@@ -6,9 +6,10 @@ import (
 )
 
 type Switch struct {
-	topoNode  graph.Node
-	hosts     []*Host
-	destTable map[util.I64Tup][]int64
+	topoNode   graph.Node
+	controller *Controller
+	hosts      []*Host
+	destTable  map[util.I64Tup][]int64
 	// maps host destination id and incoming port to outgoing port
 
 	links []Link // outgoing links
@@ -16,10 +17,11 @@ type Switch struct {
 
 func NewSwitch(node graph.Node, links []Link) *Switch {
 	return &Switch{
-		topoNode:  node,
-		hosts:     []*Host{},
-		destTable: make(map[util.I64Tup][]int64),
-		links:     links,
+		topoNode:   node,
+		hosts:      []*Host{},
+		controller: nil,
+		destTable:  make(map[util.I64Tup][]int64),
+		links:      links,
 	}
 }
 
@@ -71,4 +73,12 @@ func (s *Switch) hasEntry(key util.I64Tup, value int64) bool {
 	}
 
 	return false
+}
+
+func (s *Switch) GetController() *Controller {
+	return s.controller
+}
+
+func (s *Switch) SetController(c *Controller) {
+	s.controller = c
 }

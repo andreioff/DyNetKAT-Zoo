@@ -71,12 +71,12 @@ func (f *LatexEncoder) Encode(n *convert.Network) (string, error) {
 	return sb.String(), nil
 }
 
-func (f *LatexEncoder) encodeSwitches(switches []convert.Switch) (string, []convert.Switch) {
-	nonEmptySwitches := []convert.Switch{}
+func (f *LatexEncoder) encodeSwitches(switches []*convert.Switch) (string, []*convert.Switch) {
+	nonEmptySwitches := []*convert.Switch{}
 	var sb strings.Builder
 
 	for _, sw := range switches {
-		swStr := f.encodeSwitch(sw)
+		swStr := f.encodeSwitch(*sw)
 		if swStr != "" {
 			sb.WriteString(swStr)
 			sb.WriteString(NEW_LN)
@@ -117,12 +117,12 @@ func (f *LatexEncoder) encodeSwitch(sw convert.Switch) string {
 	return fmt.Sprintf("%s & %s & %s %s", swName, f.sym.DEF, fmtSw, NEW_LN)
 }
 
-func (f *LatexEncoder) encodeSDNTerm(sws []convert.Switch) string {
+func (f *LatexEncoder) encodeSDNTerm(sws []*convert.Switch) string {
 	var sb strings.Builder
 
 	prefix := ""
 	for _, sw := range sws {
-		sb.WriteString(prefix + f.encodeSwitchName(sw))
+		sb.WriteString(prefix + f.encodeSwitchName(*sw))
 		prefix = f.sym.PAR
 	}
 

@@ -23,7 +23,7 @@ func (_ *OutsideHostConn) ModifyNetwork(n *convert.Network) error {
 		return err
 	}
 
-	newHosts, err := n.CreateHosts(OUTSIDE_HOSTS_NR)
+	_, err = n.CreateHosts(OUTSIDE_HOSTS_NR)
 	if err != nil {
 		return err
 	}

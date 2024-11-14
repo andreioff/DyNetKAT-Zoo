@@ -14,11 +14,11 @@ type Network struct {
 	topology      util.Graph
 	shortestPaths map[util.I64Tup][]*Switch // maps a tuple of topology node ids to a switch path
 
-	switches   []Switch
+	switches   []*Switch
 	nodeIdToSw map[int64]*Switch
 
-	controllers []Controller
-	hosts       []Host
+	controllers []*Controller
+	hosts       []*Host
 	portNr      int64
 	hostId      int64
 }
@@ -38,15 +38,15 @@ func NewNetwork(topo util.Graph) (*Network, error) {
 		nodeIdToSw:    mapNodeToSwitch(switches),
 		portNr:        portNr,
 		hostId:        0,
-		hosts:         []Host{},
+		hosts:         []*Host{},
 	}, nil
 }
 
-func mapNodeToSwitch(switches []Switch) map[int64]*Switch {
+func mapNodeToSwitch(switches []*Switch) map[int64]*Switch {
 	nodeIdToSwitch := make(map[int64]*Switch, len(switches))
 
 	for _, sw := range switches {
-		nodeIdToSwitch[sw.topoNode.ID()] = &sw
+		nodeIdToSwitch[sw.topoNode.ID()] = sw
 	}
 
 	return nodeIdToSwitch
@@ -56,29 +56,41 @@ func (n *Network) PortNr() int64 {
 	return n.portNr
 }
 
-func (n *Network) Switches() []Switch {
+func (n *Network) SetPortNr(newPortNr int64) {
+	n.portNr = newPortNr
+}
+
+func (n *Network) Switches() []*Switch {
 	return n.switches
 }
 
-func (n *Network) Controllers() []Controller {
+func (n *Network) NodeIdToSw() map[int64]*Switch {
+	return n.nodeIdToSw
+}
+
+func (n *Network) Hosts() []*Host {
+	return n.hosts
+}
+
+func (n *Network) Controllers() []*Controller {
 	return n.controllers
 }
 
-func makeSwitchesFromTopology(topo util.Graph, portNr *int64) ([]Switch, error) {
+func makeSwitchesFromTopology(topo util.Graph, portNr *int64) ([]*Switch, error) {
 	if portNr == nil {
-		return []Switch{}, errors.New("Nil portNr argument!")
+		return []*Switch{}, errors.New("Nil portNr argument!")
 	}
 
-	switches := []Switch{}
+	switches := []*Switch{}
 
 	iter := topo.Nodes()
 	for iter.Next() {
 		links, err := makeLinks(topo, iter.Node(), portNr)
 		if err != nil {
-			return []Switch{}, err
+			return []*Switch{}, err
 		}
 
-		newSw := *NewSwitch(iter.Node(), links)
+		newSw := NewSwitch(iter.Node(), links)
 		switches = append(switches, newSw)
 	}
 
@@ -112,7 +124,7 @@ func nodePathToSwitchPath(path []graph.Node, nodeToSwitch map[int64]*Switch) []*
 	return switchPath
 }
 
-func computeShortestPaths(topo util.Graph, switches []Switch) map[util.I64Tup][]*Switch {
+func computeShortestPaths(topo util.Graph, switches []*Switch) map[util.I64Tup][]*Switch {
 	nodePaths := path.DijkstraAllPaths(&topo)
 	nodeToSwitch := mapNodeToSwitch(switches)
 	switchPaths := make(map[util.I64Tup][]*Switch)
@@ -121,10 +133,6 @@ func computeShortestPaths(topo util.Graph, switches []Switch) map[util.I64Tup][]
 		sw1Id := switches[i].topoNode.ID()
 
 		for j := range len(switches) {
-			if i == j {
-				continue
-			}
-
 			sw2Id := switches[j].topoNode.ID()
 			nodePath, _, _ := nodePaths.Between(sw1Id, sw2Id)
 			switchPaths[util.NewI64Tup(sw1Id, sw2Id)] = nodePathToSwitchPath(
@@ -138,35 +146,33 @@ func computeShortestPaths(topo util.Graph, switches []Switch) map[util.I64Tup][]
 }
 
 func (n *Network) assignHosts(hostsNr uint) error {
-	hosts := []Host{}
-
 	hosts, err := n.CreateHosts(hostsNr)
 	if err != nil {
 		return err
 	}
 
 	for _, h := range hosts {
-		h.sw.AddHost(&h)
+		h.sw.AddHost(h)
 	}
 	n.hosts = hosts
 
 	return nil
 }
 
-func (n *Network) CreateHosts(hostsNr uint) ([]Host, error) {
-	hosts := []Host{}
+func (n *Network) CreateHosts(hostsNr uint) ([]*Host, error) {
+	hosts := []*Host{}
 
 	randSws, err := n.pickRandomSwitches(hostsNr)
 	if err != nil {
-		return []Host{}, err
+		return []*Host{}, err
 	}
 
 	for _, randSw := range randSws {
 		newHost, err := NewHost(n.hostId, n.portNr, randSw)
 		if err != nil {
-			return []Host{}, err
+			return []*Host{}, err
 		}
-		hosts = append(hosts, newHost)
+		hosts = append(hosts, &newHost)
 
 		n.hostId++
 		n.portNr++
@@ -268,12 +274,12 @@ func (n *Network) AddAndConnectHosts(hostsNr uint) error {
 
 	for i := range len(n.hosts) {
 		for j := i + 1; j < len(n.hosts); j++ {
-			err := n.populateDestinationTables(&n.hosts[i], &n.hosts[j])
+			err := n.populateDestinationTables(n.hosts[i], n.hosts[j])
 			if err != nil {
 				return err
 			}
 
-			err = n.populateDestinationTables(&n.hosts[j], &n.hosts[i])
+			err = n.populateDestinationTables(n.hosts[j], n.hosts[i])
 			if err != nil {
 				return err
 			}
@@ -309,7 +315,8 @@ func (n *Network) AddControllers(controllersNr uint) error {
 		for _, nodeId := range slice {
 			switches = append(switches, n.nodeIdToSw[nodeId])
 		}
-		n.controllers = append(n.controllers, *NewController(switches))
+		n.controllers = append(n.controllers, NewController(switches))
 	}
+
 	return nil
 }

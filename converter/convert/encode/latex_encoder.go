@@ -92,20 +92,13 @@ func (f *LatexEncoder) encodeSwitch(sw convert.Switch) string {
 	swName := f.encodeSwitchName(sw)
 
 	prefix := ""
-	for hostIdInPort, outPorts := range sw.DestTable() {
-		dstHostId, inPort := hostIdInPort.Fst, hostIdInPort.Snd
-		for _, outPort := range outPorts {
-			fmtDstTableEntries = append(fmtDstTableEntries, fmt.Sprintf(
-				"%s((dst %s %d) %s (port %s %d) %s (port %s %d)) %s %s",
-				prefix, f.sym.EQ,
-				dstHostId, f.sym.AND,
-				f.sym.EQ, inPort,
-				f.sym.AND, f.sym.ASSIGN,
-				outPort, f.sym.SEQ,
-				swName,
-			))
-			prefix = "& & "
-		}
+	for _, policy := range sw.FlowTable().ToNetKATPolicies() {
+		fmtDstTableEntries = append(fmtDstTableEntries, fmt.Sprintf(
+			"%s(%s) %s %s",
+			prefix, policy.ToString(f.sym.AND, f.sym.EQ, f.sym.ASSIGN),
+			f.sym.SEQ, swName,
+		))
+		prefix = "& & "
 	}
 
 	if len(fmtDstTableEntries) == 0 {

@@ -2,15 +2,13 @@ package convert
 
 import (
 	"gonum.org/v1/gonum/graph"
-	"utwente.nl/topology-to-dynetkat-coverter/util"
 )
 
 type Switch struct {
 	topoNode   graph.Node
 	controller *Controller
 	hosts      []*Host
-	destTable  map[util.I64Tup][]int64
-	// maps host destination id and incoming port to outgoing port
+	flowTable  *FlowTable
 
 	links []Link // outgoing links
 }
@@ -20,7 +18,7 @@ func NewSwitch(node graph.Node, links []Link) *Switch {
 		topoNode:   node,
 		hosts:      []*Host{},
 		controller: nil,
-		destTable:  make(map[util.I64Tup][]int64),
+		flowTable:  NewFlowTable(),
 		links:      links,
 	}
 }
@@ -33,8 +31,8 @@ func (s *Switch) Hosts() []*Host {
 	return s.hosts
 }
 
-func (s *Switch) DestTable() map[util.I64Tup][]int64 {
-	return s.destTable
+func (s *Switch) FlowTable() *FlowTable {
+	return s.flowTable
 }
 
 func (s *Switch) AddHost(h *Host) {
@@ -48,31 +46,6 @@ func (s *Switch) FindLink(otherNodeId int64) *Link {
 		}
 	}
 	return nil
-}
-
-func (s *Switch) AddDestEntry(destHostId, inPort, outPort int64) {
-	key := util.NewI64Tup(destHostId, inPort)
-
-	// do not add duplicate entries
-	if s.hasEntry(key, outPort) {
-		return
-	}
-
-	s.destTable[key] = append(s.destTable[key], outPort)
-}
-
-func (s *Switch) hasEntry(key util.I64Tup, value int64) bool {
-	if _, exists := s.destTable[key]; !exists {
-		return false
-	}
-
-	for _, v := range s.destTable[key] {
-		if v == value {
-			return true
-		}
-	}
-
-	return false
 }
 
 func (s *Switch) GetController() *Controller {

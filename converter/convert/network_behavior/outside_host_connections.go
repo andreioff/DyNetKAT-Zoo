@@ -5,8 +5,8 @@ import (
 )
 
 const (
-	HOSTS_NR         = 5
-	OUTSIDE_HOSTS_NR = 5
+	HOSTS_NR         = 2
+	OUTSIDE_HOSTS_NR = 2
 	CONTROLLERS_NR   = 1
 )
 

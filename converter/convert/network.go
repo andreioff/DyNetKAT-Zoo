@@ -199,19 +199,20 @@ func (n *Network) pickRandomSwitches(picksNr uint) ([]*Switch, error) {
 	return randSws, nil
 }
 
-func (n *Network) populateDestinationTables(h1, h2 *Host) error {
+func (n *Network) populateFlowTables(h1, h2 *Host) error {
 	if h1 == nil || h2 == nil {
 		return errors.New("Null arguments!")
 	}
 
-	entries, err := n.GetDestEntriesForSwitchPath(h1.sw, h2.sw, h1.SwitchPort(), h2.SwitchPort())
+	entries, err := n.GetFlowRulesForSwitchPath(h1.sw, h2.sw, h1.SwitchPort(), h2.SwitchPort())
 	if err != nil {
 		return err
 	}
 
 	for nodeId, portTuples := range entries {
 		for _, fromPortToPort := range portTuples {
-			n.nodeIdToSw[nodeId].AddDestEntry(h2.ID(), fromPortToPort.Fst, fromPortToPort.Snd)
+			n.nodeIdToSw[nodeId].FlowTable().
+				AddEntry(h2.ID(), fromPortToPort.Fst, fromPortToPort.Snd)
 		}
 	}
 
@@ -219,9 +220,9 @@ func (n *Network) populateDestinationTables(h1, h2 *Host) error {
 }
 
 // Maps the switches on the path between 'srcSw' and 'destSw' to their
-// corresponding destination table entries for forwarding packets
+// corresponding flow rules for forwarding packets
 // from 'srcSw', port 'inPortSrcSw' to 'destSw', port 'outPortDestSw'
-func (n *Network) GetDestEntriesForSwitchPath(
+func (n *Network) GetFlowRulesForSwitchPath(
 	srcSw *Switch,
 	destSw *Switch,
 	inPortSrcSw int64,
@@ -274,12 +275,12 @@ func (n *Network) AddAndConnectHosts(hostsNr uint) error {
 
 	for i := range len(n.hosts) {
 		for j := i + 1; j < len(n.hosts); j++ {
-			err := n.populateDestinationTables(n.hosts[i], n.hosts[j])
+			err := n.populateFlowTables(n.hosts[i], n.hosts[j])
 			if err != nil {
 				return err
 			}
 
-			err = n.populateDestinationTables(n.hosts[j], n.hosts[i])
+			err = n.populateFlowTables(n.hosts[j], n.hosts[i])
 			if err != nil {
 				return err
 			}

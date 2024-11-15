@@ -26,7 +26,12 @@ type Network struct {
 func NewNetwork(topo util.Graph) (*Network, error) {
 	var portNr int64 = 0
 
-	switches, err := makeSwitchesFromTopology(topo, &portNr)
+	edgeToLink, err := makeLinks(topo, &portNr)
+	if err != nil {
+		return &Network{}, err
+	}
+
+	switches, err := makeSwitchesFromTopology(topo, edgeToLink)
 	if err != nil {
 		return &Network{}, err
 	}
@@ -76,16 +81,15 @@ func (n *Network) Controllers() []*Controller {
 	return n.controllers
 }
 
-func makeSwitchesFromTopology(topo util.Graph, portNr *int64) ([]*Switch, error) {
-	if portNr == nil {
-		return []*Switch{}, errors.New("Nil portNr argument!")
-	}
-
+func makeSwitchesFromTopology(
+	topo util.Graph,
+	edgeToLink map[util.I64Tup]*Link,
+) ([]*Switch, error) {
 	switches := []*Switch{}
 
 	iter := topo.Nodes()
 	for iter.Next() {
-		links, err := makeLinks(topo, iter.Node(), portNr)
+		links, err := getSwitchLinks(topo, iter.Node(), edgeToLink)
 		if err != nil {
 			return []*Switch{}, err
 		}
@@ -101,21 +105,41 @@ func makeSwitchesFromTopology(topo util.Graph, portNr *int64) ([]*Switch, error)
 	return switches, nil
 }
 
-func makeLinks(topo util.Graph, node graph.Node, portNr *int64) ([]Link, error) {
+func makeLinks(topo util.Graph, portNr *int64) (map[util.I64Tup]*Link, error) {
 	if portNr == nil {
-		return []Link{}, errors.New("Nil portNr argument!")
+		return make(map[util.I64Tup]*Link), errors.New("Nil portNr argument!")
 	}
 
+	edgeTolink := make(map[util.I64Tup]*Link)
+	iter := topo.Edges()
+	for iter.Next() {
+		newLink := NewLink(iter.Edge(), *portNr, *portNr+1)
+		edgeId := util.NewI64Tup(iter.Edge().From().ID(), iter.Edge().To().ID())
+		edgeTolink[edgeId] = newLink
+		*portNr += 2
+	}
+	return edgeTolink, nil
+}
+
+func getSwitchLinks(
+	topo util.Graph,
+	node graph.Node,
+	edgeToLink map[util.I64Tup]*Link,
+) ([]*Link, error) {
 	incidentEdges, err := util.GetIncidentEdges(topo, node)
 	if err != nil {
-		return []Link{}, err
+		return []*Link{}, err
 	}
 
-	links := []Link{}
+	links := []*Link{}
 	for _, edge := range incidentEdges {
-		newLink := *NewLink(edge, *portNr, *portNr+1)
-		links = append(links, newLink)
-		*portNr += 2
+		edgeId := util.NewI64Tup(edge.From().ID(), edge.To().ID())
+		link, exists := edgeToLink[edgeId]
+		if !exists || link == nil {
+			return []*Link{}, errors.New("Edge is not mapped to a link!")
+		}
+
+		links = append(links, link)
 	}
 	return links, nil
 }
@@ -238,11 +262,7 @@ func (n *Network) GetFlowRulesForSwitchPath(
 
 	path, exists := n.shortestPaths[util.NewI64Tup(srcSw.topoNode.ID(), destSw.topoNode.ID())]
 	if !exists {
-		return make(
-				map[int64][]util.I64Tup,
-			), errors.New(
-				"Path between given switches could not be found!",
-			)
+		return make(map[int64][]util.I64Tup), errors.New("Could not find path between switches!")
 	}
 
 	entries := make(map[int64][]util.I64Tup)
@@ -251,14 +271,17 @@ func (n *Network) GetFlowRulesForSwitchPath(
 	for i := range len(path) - 1 {
 		currSw := path[i]
 		nextSwId := path[i+1].topoNode.ID()
-		link := currSw.FindLink(nextSwId)
+		fromPort, toPort, err := currSw.GetLinkPorts(nextSwId)
+		if err != nil {
+			return make(map[int64][]util.I64Tup), err
+		}
 
-		inPortOutPort := util.I64Tup{Fst: receivingPort, Snd: link.FromPort()}
-		outPortNextSwInPort := util.I64Tup{Fst: link.FromPort(), Snd: link.ToPort()}
+		inPortOutPort := util.I64Tup{Fst: receivingPort, Snd: fromPort}
+		outPortNextSwInPort := util.I64Tup{Fst: fromPort, Snd: toPort}
 
 		entries[currSw.topoNode.ID()] = []util.I64Tup{inPortOutPort, outPortNextSwInPort}
 
-		receivingPort = link.ToPort()
+		receivingPort = toPort
 	}
 
 	inPortOutPort := util.I64Tup{Fst: receivingPort, Snd: outPortDestSw}

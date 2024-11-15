@@ -9,7 +9,7 @@ import (
 
 const (
 	HOSTS_NR         = 2
-	OUTSIDE_HOSTS_NR = 2
+	OUTSIDE_HOSTS_NR = 1
 	CONTROLLERS_NR   = 1
 )
 

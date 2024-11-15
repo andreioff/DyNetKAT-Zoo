@@ -12,10 +12,10 @@ type Switch struct {
 	hosts      []*Host
 	flowTable  *FlowTable
 
-	links []Link // outgoing links
+	links []*Link // outgoing links
 }
 
-func NewSwitch(node graph.Node, links []Link) (*Switch, error) {
+func NewSwitch(node graph.Node, links []*Link) (*Switch, error) {
 	if node == nil {
 		return &Switch{}, errors.New("Nil topology node!")
 	}
@@ -49,13 +49,20 @@ func (s *Switch) AddHost(h *Host) {
 	s.hosts = append(s.hosts, h)
 }
 
-func (s *Switch) FindLink(otherNodeId int64) *Link {
+/*
+Returns, in the correct order, the ports of the link between this switch and the given switch id.
+Returns an error if the link could not be found.
+*/
+func (s *Switch) GetLinkPorts(otherNodeId int64) (int64, int64, error) {
 	for _, link := range s.links {
-		if link.topoEdge.From().ID() == otherNodeId || link.topoEdge.To().ID() == otherNodeId {
-			return &link
+		if link.topoEdge.From().ID() == otherNodeId {
+			return link.ToPort(), link.FromPort(), nil
+		}
+		if link.topoEdge.To().ID() == otherNodeId {
+			return link.FromPort(), link.ToPort(), nil
 		}
 	}
-	return nil
+	return 0, 0, errors.New("Could not find link between switches!")
 }
 
 func (s *Switch) GetController() *Controller {

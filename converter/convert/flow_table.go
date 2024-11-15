@@ -14,6 +14,10 @@ func (ft *FlowTable) Entries() map[util.I64Tup][]int64 {
 	return ft.entries
 }
 
+func (ft *FlowTable) setEntries(newEntries map[util.I64Tup][]int64) {
+	ft.entries = newEntries
+}
+
 func NewFlowTable() *FlowTable {
 	return &FlowTable{
 		entries: make(map[util.I64Tup][]int64),
@@ -60,4 +64,20 @@ func (ft *FlowTable) ToNetKATPolicies() []*SimpleNetKATPolicy {
 	}
 
 	return policies
+}
+
+// returns a deep copy of this flow table
+func (ft *FlowTable) Copy() *FlowTable {
+	newFt := NewFlowTable()
+	entries := make(map[util.I64Tup][]int64)
+
+	for hostIdInPort, outPorts := range ft.entries {
+		newOutPorts := make([]int64, len(outPorts))
+		copy(newOutPorts, outPorts)
+
+		entries[hostIdInPort] = newOutPorts
+	}
+	newFt.setEntries(entries)
+
+	return newFt
 }

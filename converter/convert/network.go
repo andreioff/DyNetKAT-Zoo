@@ -90,7 +90,11 @@ func makeSwitchesFromTopology(topo util.Graph, portNr *int64) ([]*Switch, error)
 			return []*Switch{}, err
 		}
 
-		newSw := NewSwitch(iter.Node(), links)
+		newSw, err := NewSwitch(iter.Node(), links)
+		if err != nil {
+			return []*Switch{}, err
+		}
+
 		switches = append(switches, newSw)
 	}
 

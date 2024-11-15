@@ -24,6 +24,7 @@ type SymbolEncoding struct {
 }
 
 type NetworkEncoder interface {
-	GetSymbolEncodings() SymbolEncoding
+	SymbolEncodings() SymbolEncoding
 	Encode(n *convert.Network) string
+	ProactiveSwitch() bool
 }

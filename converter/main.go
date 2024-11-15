@@ -2,8 +2,6 @@ package main
 
 import (
 	"log"
-	//"maps"
-	//"slices"
 
 	"utwente.nl/topology-to-dynetkat-coverter/convert/encode"
 	behavior "utwente.nl/topology-to-dynetkat-coverter/convert/network_behavior"
@@ -27,7 +25,7 @@ func main() {
 	gs := util.GraphMLsToGraphs(graphMLs)
 	validTopos := util.ValidateTopologies(gs)
 
-	log.Printf("Processing network with topology id: %s", NETWORK_ID)
+	log.Printf("Generating DyNetKAT encoding for topology with id: %s...\n", NETWORK_ID)
 	topo, exists := validTopos[NETWORK_ID]
 
 	if !exists {
@@ -42,7 +40,7 @@ func main() {
 		log.Fatalln(err)
 	}
 
-	encoder := encode.NewLatexEncoder()
+	encoder := encode.NewLatexEncoder(false)
 	fmtNet, err := encoder.Encode(network)
 	if err != nil {
 		log.Fatalln(err)

@@ -27,3 +27,7 @@ func (h *Host) ID() int64 {
 func (h *Host) SwitchPort() int64 {
 	return h.switchPort
 }
+
+func (h *Host) Switch() *Switch {
+	return h.sw
+}

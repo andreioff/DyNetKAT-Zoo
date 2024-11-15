@@ -10,21 +10,26 @@ import (
 )
 
 const (
-	NEW_LN            = "\\\\\n"
-	NEW_PAGE          = "\n\\newpage\n"
-	BEGIN_EQ_ARRAY    = "\\begin{equation} \\begin{array}{rcl}\n\n"
-	END_EQ_ARRAY      = "\n\n\\end{array} \\end{equation}\n"
-	THIRD_COL_MAX_LEN = 40 // nr of chars before the third column of the array env overflows
-	LINES_PER_PAGE    = 40
+	NEW_LN               = "\\\\\n"
+	NEW_PAGE             = "\n\\newpage\n"
+	BEGIN_EQ_ARRAY       = "\\begin{equation} \\begin{array}{rcl}\n\n"
+	END_EQ_ARRAY         = "\n\n\\end{array} \\end{equation}\n"
+	THIRD_COL_MAX_LEN    = 40 // nr of chars before the third column of the array env overflows
+	LINES_PER_PAGE       = 40
+	SW_BASE_NAME         = "SW"
+	CONTROLLER_BASE_NAME = "C"
+	UP_CHANNEL_NAME      = "Up"
+	HELP_CHANNEL_NAME    = "Help"
 )
 
 type LatexEncoder struct {
-	sym SymbolEncoding
+	sym             SymbolEncoding
+	proactiveSwitch bool
 }
 
-func NewLatexEncoder() LatexEncoder {
+func NewLatexEncoder(proactiveSwitch bool) LatexEncoder {
 	return LatexEncoder{
-		SymbolEncoding{
+		sym: SymbolEncoding{
 			ONE:    "1",
 			ZERO:   "0",
 			EQ:     "=",
@@ -36,17 +41,22 @@ func NewLatexEncoder() LatexEncoder {
 
 			BOT:    "\\bot",
 			SEQ:    "\\, ;\\, ",
-			RECV:   "?",
-			SEND:   "!",
+			RECV:   "\\, ?\\, ",
+			SEND:   "\\, !\\, ",
 			PAR:    "\\, \\|\\, ",
 			DEF:    "\\triangleq",
 			NONDET: "\\, \\oplus\\,",
 		},
+		proactiveSwitch: proactiveSwitch,
 	}
 }
 
-func (f *LatexEncoder) GetSymbolEncodings() SymbolEncoding {
+func (f *LatexEncoder) SymbolEncodings() SymbolEncoding {
 	return f.sym
+}
+
+func (f *LatexEncoder) ProactiveSwitch() bool {
+	return f.proactiveSwitch
 }
 
 func (f *LatexEncoder) Encode(n *convert.Network) (string, error) {
@@ -55,7 +65,11 @@ func (f *LatexEncoder) Encode(n *convert.Network) (string, error) {
 	}
 
 	fmtSwitches, nonEmptySwitches := f.encodeSwitches(n.Switches())
-	arrayBlockStr := fmtSwitches + f.encodeSDNTerm(nonEmptySwitches)
+	fmtControllers, usedControllers := f.encodeControllers(n.Controllers())
+	arrayBlockStr := fmtSwitches + fmtControllers + f.encodeSDNTerm(
+		nonEmptySwitches,
+		usedControllers,
+	)
 	pages := sliceContent(arrayBlockStr, LINES_PER_PAGE, NEW_LN)
 
 	var sb strings.Builder
@@ -76,54 +90,171 @@ func (f *LatexEncoder) encodeSwitches(switches []*convert.Switch) (string, []*co
 	var sb strings.Builder
 
 	for _, sw := range switches {
-		swStr := f.encodeSwitch(*sw)
+		c := sw.Controller()
+		newFlowTable, willReceiveUpdate := convert.NewFlowTable(), false
+		if c != nil {
+			newFlowTable, willReceiveUpdate = c.NewFlowTables()[sw.TopoNode().ID()]
+		}
+
+		swStr := f.encodeSwitch(*sw, willReceiveUpdate)
 		if swStr != "" {
 			sb.WriteString(swStr)
 			sb.WriteString(NEW_LN)
 			nonEmptySwitches = append(nonEmptySwitches, sw)
+		}
+
+		if !willReceiveUpdate {
+			continue
+		}
+
+		// TODO This can be merged in the encodeSwitch function
+		newSwName := f.encodeSwitchName(*sw, true)
+		updatedSwStrs := f.encodeNetKATPolicies(newFlowTable.ToNetKATPolicies(), newSwName)
+		if len(updatedSwStrs) != 0 {
+			fmtNewSw := f.joinNonDetThridColumn(updatedSwStrs)
+			sb.WriteString(fmt.Sprintf("%s & %s & %s", newSwName, f.sym.DEF, fmtNewSw))
+			sb.WriteString(NEW_LN + NEW_LN)
 		}
 	}
 
 	return sb.String(), nonEmptySwitches
 }
 
-func (f *LatexEncoder) encodeSwitch(sw convert.Switch) string {
-	fmtDstTableEntries := []string{}
-	swName := f.encodeSwitchName(sw)
+func (f *LatexEncoder) encodeSwitch(sw convert.Switch, canBeEmpty bool) string {
+	swName := f.encodeSwitchName(sw, false)
 
-	prefix := ""
-	for _, policy := range sw.FlowTable().ToNetKATPolicies() {
-		fmtDstTableEntries = append(fmtDstTableEntries, fmt.Sprintf(
-			"%s(%s) %s %s",
-			prefix, policy.ToString(f.sym.AND, f.sym.EQ, f.sym.ASSIGN),
-			f.sym.SEQ, swName,
-		))
-		prefix = "& & "
+	fmtFlowRules := f.encodeNetKATPolicies(sw.FlowTable().ToNetKATPolicies(), swName)
+
+	if len(fmtFlowRules) == 0 {
+		if !canBeEmpty {
+			return ""
+		}
+		dropAllStr := fmt.Sprintf("%s%s%s", f.sym.ZERO, f.sym.SEQ, swName)
+		fmtFlowRules = append(fmtFlowRules, dropAllStr)
 	}
 
-	if len(fmtDstTableEntries) == 0 {
-		return ""
-	}
+	commStr := f.encodeCommunication(f.encodeSwitchName(sw, true), sw.TopoNode().ID(), false)
+	fmtFlowRules = append(fmtFlowRules, commStr)
 
-	nonDetSep := fmt.Sprintf(" %s %s", f.sym.NONDET, NEW_LN)
-	fmtSw := strings.Join(fmtDstTableEntries, nonDetSep)
+	fmtSw := f.joinNonDetThridColumn(fmtFlowRules)
 	return fmt.Sprintf("%s & %s & %s %s", swName, f.sym.DEF, fmtSw, NEW_LN)
 }
 
-func (f *LatexEncoder) encodeSDNTerm(sws []*convert.Switch) string {
+func (f *LatexEncoder) encodeNetKATPolicies(
+	policies []*convert.SimpleNetKATPolicy,
+	swName string,
+) []string {
+	fmtFlowRules := []string{}
+	for _, policy := range policies {
+		fmtFlowRules = append(fmtFlowRules, fmt.Sprintf(
+			"(%s) %s %s",
+			policy.ToString(f.sym.AND, f.sym.EQ, f.sym.ASSIGN),
+			f.sym.SEQ, swName,
+		))
+	}
+
+	return fmtFlowRules
+}
+
+func (f *LatexEncoder) encodeCommunication(
+	termName string,
+	channelId int64,
+	fromSwitch bool,
+) string {
+	upCommSym := f.sym.SEND
+	helpCommSym := f.sym.RECV
+	if fromSwitch {
+		upCommSym = f.sym.RECV
+		helpCommSym = f.sym.SEND
+	}
+
+	commStr := fmt.Sprintf(
+		"%s%d %s %s %s %s",
+		UP_CHANNEL_NAME,
+		channelId,
+		upCommSym,
+		f.sym.ONE,
+		f.sym.SEQ,
+		termName,
+	)
+
+	if !f.proactiveSwitch {
+		return commStr
+	}
+
+	return fmt.Sprintf("%s%d%s%s %s %s",
+		HELP_CHANNEL_NAME,
+		channelId,
+		helpCommSym,
+		f.sym.ONE,
+		f.sym.SEQ,
+		commStr,
+	)
+}
+
+func (f *LatexEncoder) encodeSDNTerm(sws []*convert.Switch, c []*convert.Controller) string {
 	var sb strings.Builder
 
 	prefix := ""
 	for _, sw := range sws {
-		sb.WriteString(prefix + f.encodeSwitchName(*sw))
+		sb.WriteString(prefix + f.encodeSwitchName(*sw, false))
 		prefix = f.sym.PAR
+	}
+
+	for _, c := range c {
+		sb.WriteString(prefix + fmt.Sprintf("%s%d", CONTROLLER_BASE_NAME, c.ID()))
 	}
 
 	return fmt.Sprintf("SDN & %s & %s", f.sym.DEF, breakColumn(sb.String()))
 }
 
-func (f *LatexEncoder) encodeSwitchName(sw convert.Switch) string {
-	return fmt.Sprintf("SW%d", sw.TopoNode().ID())
+func (f *LatexEncoder) encodeSwitchName(sw convert.Switch, isNew bool) string {
+	name := fmt.Sprintf("%s%d", SW_BASE_NAME, sw.TopoNode().ID())
+	if isNew {
+		return name + "'"
+	}
+	return name
+}
+
+func (f *LatexEncoder) encodeControllers(
+	controllers []*convert.Controller,
+) (string, []*convert.Controller) {
+	usedControllers := []*convert.Controller{}
+	var sb strings.Builder
+
+	for _, c := range controllers {
+		cStr := f.encodeController(c)
+		if cStr != "" {
+			sb.WriteString(cStr)
+			sb.WriteString(NEW_LN)
+			usedControllers = append(usedControllers, c)
+		}
+	}
+
+	return sb.String(), usedControllers
+}
+
+func (f *LatexEncoder) encodeController(c *convert.Controller) string {
+	fmtCommStrs := []string{}
+	cName := fmt.Sprintf("%s%d", CONTROLLER_BASE_NAME, c.ID())
+
+	for key := range c.NewFlowTables() {
+		commStr := f.encodeCommunication(cName, key, false)
+		fmtCommStrs = append(fmtCommStrs, commStr)
+	}
+
+	if len(c.NewFlowTables()) == 0 {
+		return ""
+	}
+
+	fmtC := f.joinNonDetThridColumn(fmtCommStrs)
+	return fmt.Sprintf("%s & %s & %s %s", cName, f.sym.DEF, fmtC, NEW_LN)
+}
+
+func (f *LatexEncoder) joinNonDetThridColumn(strs []string) string {
+	// '& & ' are for placing the conent in the third column of the array env
+	nonDetSep := fmt.Sprintf(" %s %s& & ", f.sym.NONDET, NEW_LN)
+	return strings.Join(strs, nonDetSep)
 }
 
 /*

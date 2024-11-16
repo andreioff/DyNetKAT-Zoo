@@ -2,6 +2,8 @@ package convert
 
 import (
 	"errors"
+
+	"utwente.nl/topology-to-dynetkat-coverter/util"
 )
 
 var id int64
@@ -68,4 +70,40 @@ func (c *Controller) findSwitch(nodeId int64) *Switch {
 		}
 	}
 	return nil
+}
+
+func (c *Controller) AddNewFlowRules(nodeId, destHostId int64, portTups []util.I64Tup) error {
+	sw := c.findSwitch(nodeId)
+	if sw == nil {
+		return errors.New("No switch matches the given node id!")
+	}
+
+	ft, exists := c.newFlowTables[nodeId]
+	if !exists {
+		if !c.newEntriesExist(sw.FlowTable(), destHostId, portTups) {
+			return nil
+		}
+		c.newFlowTables[nodeId] = sw.FlowTable().Copy()
+		ft = c.newFlowTables[nodeId]
+	}
+
+	for _, inPortOutPort := range portTups {
+		ft.AddEntry(destHostId, inPortOutPort.Fst, inPortOutPort.Snd)
+	}
+
+	return nil
+}
+
+func (c *Controller) newEntriesExist(
+	swFt *FlowTable,
+	destHostId int64,
+	portTups []util.I64Tup,
+) bool {
+	for _, inPortOutPort := range portTups {
+		hasEntry := swFt.hasEntry(util.NewI64Tup(destHostId, inPortOutPort.Fst), inPortOutPort.Snd)
+		if !hasEntry {
+			return true
+		}
+	}
+	return false
 }

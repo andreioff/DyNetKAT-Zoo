@@ -81,3 +81,24 @@ func (ft *FlowTable) Copy() *FlowTable {
 
 	return newFt
 }
+
+func (ft *FlowTable) IsEqual(otherFt *FlowTable) bool {
+	if otherFt == nil {
+		return false
+	}
+
+	entries, otherEntries := ft.entries, otherFt.entries
+
+	if len(entries) != len(otherEntries) {
+		return false
+	}
+
+	for key, otherArr := range otherEntries {
+		arr, exists := entries[key]
+		if !exists || !util.ArePermutations(arr, otherArr) {
+			return false
+		}
+	}
+
+	return true
+}

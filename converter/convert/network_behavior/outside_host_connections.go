@@ -88,41 +88,14 @@ func addEntriesToControllerNewFlowTables(
 	}
 
 	for nodeId, portTups := range newEntries {
-		ft, err := findOrCreateNewFlowTable(n.NodeIdToSw()[nodeId])
-		if err != nil {
-			return err
+		sw := n.NodeIdToSw()[nodeId]
+		c := sw.Controller()
+		if c == nil {
+			return errors.New("Switch has nil controller!")
 		}
 
-		for _, inPortOutPort := range portTups {
-			ft.AddEntry(destHostId, inPortOutPort.Fst, inPortOutPort.Snd)
-		}
+		c.AddNewFlowRules(nodeId, destHostId, portTups)
 	}
 
 	return nil
-}
-
-// Returns the new flow table of the given switch that will be installed
-// by the associated controller. If the controller does not have this new flow table,
-// it creates one by coping over the table of the given switch.
-func findOrCreateNewFlowTable(sw *convert.Switch) (*convert.FlowTable, error) {
-	if sw == nil {
-		return convert.NewFlowTable(), errors.New("Nil switch!")
-	}
-
-	c := sw.Controller()
-	if c == nil {
-		return convert.NewFlowTable(), errors.New("Switch has nil controller!")
-	}
-
-	nodeId := sw.TopoNode().ID()
-	ft, exists := c.NewFlowTables()[nodeId]
-	if exists {
-		return ft, nil
-	}
-
-	err := c.CopyFlowTable(nodeId)
-	if err != nil {
-		return convert.NewFlowTable(), err
-	}
-	return c.NewFlowTables()[nodeId], nil
 }

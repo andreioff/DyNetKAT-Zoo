@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"gonum.org/v1/gonum/graph"
 	"gonum.org/v1/gonum/graph/simple"
+
 	"utwente.nl/topology-to-dynetkat-coverter/util"
 )
 
@@ -40,17 +41,15 @@ func TestConvert_NewLink(t *testing.T) {
 				assert.Equal(t, int64(10), link.toPort)
 			},
 		},
-		"Getters [Success]": {
+		"Link Getters [Success]": {
 			edge:     simpleEdge,
 			fromPort: 4,
 			toPort:   -8,
 			assertSetup: func(t *testing.T, link *Link, err error) {
 				assert.NotNil(t, link.TopoEdge())
-				assert.NotNil(t, link.FromPort())
-				assert.NotNil(t, link.ToPort())
 				assert.EqualValues(t, simpleEdge, link.TopoEdge())
-				assert.Equal(t, int64(4), link.fromPort)
-				assert.Equal(t, int64(-8), link.toPort)
+				assert.Equal(t, int64(4), link.FromPort())
+				assert.Equal(t, int64(-8), link.ToPort())
 			},
 		},
 	}

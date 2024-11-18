@@ -30,20 +30,3 @@ func SplitArray[T any](arr []T, slicesNr uint) [][]T {
 
 	return slices
 }
-
-func ArePermutations(a []int64, b []int64) bool {
-	if len(a) != len(b) {
-		return false
-	}
-
-	var xorResult int64 = 0
-
-	// Calculate XOR of all elements in both arrays
-	for i := range len(a) {
-		xorResult ^= a[i]
-		xorResult ^= b[i]
-	}
-
-	// If XOR result is 0, arrays are permutations of each other
-	return xorResult == 0
-}

@@ -45,24 +45,6 @@ func NewController(switches []*Switch) *Controller {
 	return c
 }
 
-/*
-Copies the flow table of the switch with the given node id
-to the 'newFlowTables' map. It overwrites the map entry if
-the entry already exists!
-Returns an error if the switch with the given node id is
-not found, and nil otherwise.
-*/
-func (c *Controller) CopyFlowTable(nodeId int64) error {
-	sw := c.findSwitch(nodeId)
-	if sw == nil {
-		return errors.New("No switch matches the given node id!")
-	}
-
-	c.newFlowTables[nodeId] = sw.FlowTable().Copy()
-
-	return nil
-}
-
 func (c *Controller) findSwitch(nodeId int64) *Switch {
 	for _, sw := range c.switches {
 		if sw.topoNode.ID() == nodeId {
@@ -72,6 +54,10 @@ func (c *Controller) findSwitch(nodeId int64) *Switch {
 	return nil
 }
 
+/*
+Adds flow rules to the new flow table of the switch with the given node id, creating the
+new flow table if it doesn't exist. The flow table is created only if new flow rules exist.
+*/
 func (c *Controller) AddNewFlowRules(nodeId, destHostId int64, portTups []util.I64Tup) error {
 	sw := c.findSwitch(nodeId)
 	if sw == nil {
@@ -99,6 +85,10 @@ func (c *Controller) newEntriesExist(
 	destHostId int64,
 	portTups []util.I64Tup,
 ) bool {
+	if swFt == nil {
+		return true
+	}
+
 	for _, inPortOutPort := range portTups {
 		hasEntry := swFt.hasEntry(util.NewI64Tup(destHostId, inPortOutPort.Fst), inPortOutPort.Snd)
 		if !hasEntry {

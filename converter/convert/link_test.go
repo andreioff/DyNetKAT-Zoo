@@ -1,0 +1,55 @@
+package convert_test
+
+import (
+	"fmt"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"gonum.org/v1/gonum/graph"
+	"gonum.org/v1/gonum/graph/simple"
+	"utwente.nl/topology-to-dynetkat-coverter/convert"
+	"utwente.nl/topology-to-dynetkat-coverter/util"
+)
+
+func TestConvert_NewLink(t *testing.T) {
+	var simpleEdge graph.Edge = simple.Edge{F: simple.Node(0), T: simple.Node(0)}
+
+	cases := map[string]struct {
+		edge        graph.Edge
+		fromPort    int64
+		toPort      int64
+		assertSetup func(*testing.T, *convert.Link, error)
+	}{
+		"Nil edge [Validation error]": {
+			edge:     nil,
+			fromPort: 0,
+			toPort:   0,
+			assertSetup: func(t *testing.T, link *convert.Link, err error) {
+				assert.NotNil(t, link)
+				assert.EqualError(t, err, fmt.Sprintf(util.ErrNilArgument, "edge"))
+			},
+		},
+		"Valid link [Success]": {
+			edge:     simpleEdge,
+			fromPort: -1,
+			toPort:   10,
+			assertSetup: func(t *testing.T, link *convert.Link, err error) {
+				assert.Nil(t, err)
+				assert.NotNil(t, link)
+				assert.Equal(t, simpleEdge, link.TopoEdge())
+				assert.Equal(t, int64(-1), link.FromPort())
+				assert.Equal(t, int64(10), link.ToPort())
+			},
+		},
+	}
+
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			link, err := convert.NewLink(tc.edge, tc.fromPort, tc.toPort)
+			// Assert the result
+			if tc.assertSetup != nil {
+				tc.assertSetup(t, link, err)
+			}
+		})
+	}
+}

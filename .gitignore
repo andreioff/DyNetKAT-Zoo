@@ -26,4 +26,5 @@ converter/.env
 
 # others
 converter/*/.null-ls*
+converter/.null-ls*
 converter/output

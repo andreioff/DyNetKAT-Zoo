@@ -15,17 +15,17 @@ type (
 )
 
 // return the valid topologies in the given array
-func ValidateTopologies(tops []Graph) []Graph {
-	validTops := []Graph{}
+func ValidateTopologies(tops map[string]Graph) map[string]Graph {
+	validTops := make(map[string]Graph)
 
-	for _, top := range tops {
+	for name, top := range tops {
 		err := ValidateTopology(top)
 		if err != nil {
-			log.Printf("%s Skipping...", err)
+			log.Printf("%s: %s Skipping...", name, err)
 			continue
 		}
 
-		validTops = append(validTops, top)
+		validTops[name] = top
 	}
 
 	log.Printf("Processed %d topologies. %d were invalid.", len(tops), len(tops)-len(validTops))

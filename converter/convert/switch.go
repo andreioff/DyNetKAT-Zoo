@@ -1,28 +1,32 @@
 package convert
 
 import (
+	"errors"
+
 	"gonum.org/v1/gonum/graph"
-	"utwente.nl/topology-to-dynetkat-coverter/util"
 )
 
 type Switch struct {
 	topoNode   graph.Node
 	controller *Controller
 	hosts      []*Host
-	destTable  map[util.I64Tup][]int64
-	// maps host destination id and incoming port to outgoing port
+	flowTable  *FlowTable
 
-	links []Link // outgoing links
+	links []*Link // outgoing links
 }
 
-func NewSwitch(node graph.Node, links []Link) *Switch {
+func NewSwitch(node graph.Node, links []*Link) (*Switch, error) {
+	if node == nil {
+		return &Switch{}, errors.New("Nil topology node!")
+	}
+
 	return &Switch{
 		topoNode:   node,
 		hosts:      []*Host{},
 		controller: nil,
-		destTable:  make(map[util.I64Tup][]int64),
+		flowTable:  NewFlowTable(),
 		links:      links,
-	}
+	}, nil
 }
 
 func (s *Switch) TopoNode() graph.Node {
@@ -33,46 +37,32 @@ func (s *Switch) Hosts() []*Host {
 	return s.hosts
 }
 
-func (s *Switch) DestTable() map[util.I64Tup][]int64 {
-	return s.destTable
+func (s *Switch) FlowTable() *FlowTable {
+	return s.flowTable
+}
+
+func (s *Switch) Controller() *Controller {
+	return s.controller
 }
 
 func (s *Switch) AddHost(h *Host) {
 	s.hosts = append(s.hosts, h)
 }
 
-func (s *Switch) FindLink(otherNodeId int64) *Link {
+/*
+Returns, in the correct order, the ports of the link between this switch and the given switch id.
+Returns an error if the link could not be found.
+*/
+func (s *Switch) GetLinkPorts(otherNodeId int64) (int64, int64, error) {
 	for _, link := range s.links {
-		if link.topoEdge.From().ID() == otherNodeId || link.topoEdge.To().ID() == otherNodeId {
-			return &link
+		if link.topoEdge.From().ID() == otherNodeId {
+			return link.ToPort(), link.FromPort(), nil
+		}
+		if link.topoEdge.To().ID() == otherNodeId {
+			return link.FromPort(), link.ToPort(), nil
 		}
 	}
-	return nil
-}
-
-func (s *Switch) AddDestEntry(destHostId, inPort, outPort int64) {
-	key := util.NewI64Tup(destHostId, inPort)
-
-	// do not add duplicate entries
-	if s.hasEntry(key, outPort) {
-		return
-	}
-
-	s.destTable[key] = append(s.destTable[key], outPort)
-}
-
-func (s *Switch) hasEntry(key util.I64Tup, value int64) bool {
-	if _, exists := s.destTable[key]; !exists {
-		return false
-	}
-
-	for _, v := range s.destTable[key] {
-		if v == value {
-			return true
-		}
-	}
-
-	return false
+	return 0, 0, errors.New("Could not find link between switches!")
 }
 
 func (s *Switch) GetController() *Controller {

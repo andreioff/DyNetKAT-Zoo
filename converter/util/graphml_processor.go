@@ -1,7 +1,6 @@
 package util
 
 import (
-	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -61,9 +60,7 @@ func GetGraphMLs(dirPath string) ([]graphml.GraphML, error) {
 
 func GraphMLToGraph(gml graphml.GraphML) (Graph, error) {
 	if len(gml.Graphs) != 1 {
-		return *simple.NewUndirectedGraph(), errors.New(
-			"GraphML instance must contain exactly 1 graph!",
-		)
+		return *simple.NewUndirectedGraph(), NewError(ErrGraphMLExactly1Graph)
 	}
 
 	gmlGraph := gml.Graphs[0]

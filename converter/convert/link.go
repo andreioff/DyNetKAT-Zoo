@@ -1,6 +1,9 @@
 package convert
 
-import "gonum.org/v1/gonum/graph"
+import (
+	"gonum.org/v1/gonum/graph"
+	"utwente.nl/topology-to-dynetkat-coverter/util"
+)
 
 type Link struct {
 	topoEdge graph.Edge
@@ -8,12 +11,16 @@ type Link struct {
 	toPort   int64
 }
 
-func NewLink(edge graph.Edge, fromPort, toPort int64) *Link {
+func NewLink(edge graph.Edge, fromPort, toPort int64) (*Link, error) {
+	if edge == nil {
+		return &Link{}, util.NewError(util.ErrNilArgument, "edge")
+	}
+
 	return &Link{
 		topoEdge: edge,
 		fromPort: fromPort,
 		toPort:   toPort,
-	}
+	}, nil
 }
 
 func (l *Link) TopoEdge() graph.Edge {

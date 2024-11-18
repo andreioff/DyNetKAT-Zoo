@@ -1,8 +1,6 @@
 package util
 
 import (
-	"errors"
-	"fmt"
 	"log"
 
 	"gonum.org/v1/gonum/graph"
@@ -45,12 +43,12 @@ func ValidateTopology(top Graph) error {
 // verifies if the given graph is connected
 func isConnected(top Graph) error {
 	if top.Nodes().Len() == 0 {
-		return errors.New("Empty graph!")
+		return NewError(ErrEmptyGraph)
 	}
 
 	componentNr := len(topo.ConnectedComponents(&top))
 	if componentNr > 1 {
-		return errors.New(fmt.Sprintf("Disconnected graph with %d components!", componentNr))
+		return NewError(ErrDisconnGraph, componentNr)
 	}
 
 	return nil
@@ -92,11 +90,11 @@ func GraphCmp(a Graph, b Graph) int {
 
 func GetIncidentEdges(g Graph, n graph.Node) ([]graph.Edge, error) {
 	if n == nil {
-		return []graph.Edge{}, errors.New("Node is nil!")
+		return []graph.Edge{}, NewError(ErrNilArgument, "n")
 	}
 
 	if g.Node(n.ID()) == nil {
-		return []graph.Edge{}, errors.New("Node is not part of the graph!")
+		return []graph.Edge{}, NewError(ErrNodeNotInGraph)
 	}
 
 	incidentEdges := []graph.Edge{}

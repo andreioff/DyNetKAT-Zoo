@@ -2,7 +2,6 @@ package util
 
 import (
 	"cmp"
-	"errors"
 	"maps"
 	"math/rand"
 	"slices"
@@ -24,9 +23,7 @@ It stable sorts the elements of the array to ensure reproducible results.
 func RandomFromArray[OrdArr ~[]E, E cmp.Ordered](arr OrdArr, picksNr uint) (OrdArr, error) {
 	arr = sortAndRemoveDuplicates(arr)
 	if int(picksNr) > len(arr) {
-		return OrdArr{}, errors.New(
-			"No. of random picks is greater than the no. of unique elements in the array.",
-		)
+		return OrdArr{}, NewError(ErrMorePicksThanUniqueElements)
 	}
 
 	picks := OrdArr{}

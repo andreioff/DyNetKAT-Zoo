@@ -1,8 +1,6 @@
 package behavior
 
 import (
-	"errors"
-
 	"utwente.nl/topology-to-dynetkat-coverter/convert"
 	"utwente.nl/topology-to-dynetkat-coverter/util"
 )
@@ -37,7 +35,7 @@ func (_ *OutsideHostConn) ModifyNetwork(n *convert.Network) error {
 
 func populateControllerNewFlowTables(newHosts []*convert.Host, n *convert.Network) error {
 	if n == nil {
-		return errors.New("Nil network!")
+		return util.NewError(util.ErrNilArgument, "n")
 	}
 
 	for _, newHost := range newHosts {
@@ -53,9 +51,9 @@ func populateControllerNewFlowTables(newHosts []*convert.Host, n *convert.Networ
 func addNewHostConnFlowRules(newHost *convert.Host, n *convert.Network) error {
 	switch {
 	case newHost == nil:
-		return errors.New("Nil newHost!")
+		return util.NewError(util.ErrNilArgument, "newHost")
 	case n == nil:
-		return errors.New("Nil network!")
+		return util.NewError(util.ErrNilArgument, "n")
 	}
 
 	for _, host := range n.Hosts() {
@@ -84,14 +82,14 @@ func addEntriesToControllerNewFlowTables(
 	newEntries map[int64][]util.I64Tup,
 ) error {
 	if n == nil {
-		return errors.New("Nil network!")
+		return util.NewError(util.ErrNilArgument, "n")
 	}
 
 	for nodeId, portTups := range newEntries {
 		sw := n.NodeIdToSw()[nodeId]
 		c := sw.Controller()
 		if c == nil {
-			return errors.New("Switch has nil controller!")
+			return util.NewError(util.ErrSwitchHasNilController)
 		}
 
 		c.AddNewFlowRules(nodeId, destHostId, portTups)

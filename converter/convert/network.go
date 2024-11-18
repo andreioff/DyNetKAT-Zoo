@@ -1,7 +1,6 @@
 package convert
 
 import (
-	"errors"
 	"maps"
 	"slices"
 
@@ -107,13 +106,17 @@ func makeSwitchesFromTopology(
 
 func makeLinks(topo util.Graph, portNr *int64) (map[util.I64Tup]*Link, error) {
 	if portNr == nil {
-		return make(map[util.I64Tup]*Link), errors.New("Nil portNr argument!")
+		return make(map[util.I64Tup]*Link), util.NewError(util.ErrNilArgument, "portNr")
 	}
 
 	edgeTolink := make(map[util.I64Tup]*Link)
 	iter := topo.Edges()
 	for iter.Next() {
-		newLink := NewLink(iter.Edge(), *portNr, *portNr+1)
+		newLink, err := NewLink(iter.Edge(), *portNr, *portNr+1)
+		if err != nil {
+			return make(map[util.I64Tup]*Link), err
+		}
+
 		edgeId := util.NewI64Tup(iter.Edge().From().ID(), iter.Edge().To().ID())
 		edgeTolink[edgeId] = newLink
 		*portNr += 2
@@ -136,7 +139,7 @@ func getSwitchLinks(
 		edgeId := util.NewI64Tup(edge.From().ID(), edge.To().ID())
 		link, exists := edgeToLink[edgeId]
 		if !exists || link == nil {
-			return []*Link{}, errors.New("Edge is not mapped to a link!")
+			return []*Link{}, util.NewError(util.ErrEdgeNotMappedToLink)
 		}
 
 		links = append(links, link)
@@ -213,7 +216,7 @@ func (n *Network) CreateHosts(hostsNr uint) ([]*Host, error) {
 // so we must pick them by ID
 func (n *Network) pickRandomSwitches(picksNr uint) ([]*Switch, error) {
 	if len(n.switches) == 0 {
-		return []*Switch{}, errors.New("Network has no switches!")
+		return []*Switch{}, util.NewError(util.ErrNetworkHasNoSwitches)
 	}
 	nodeIds := slices.Collect(maps.Keys(n.nodeIdToSw))
 
@@ -228,8 +231,11 @@ func (n *Network) pickRandomSwitches(picksNr uint) ([]*Switch, error) {
 }
 
 func (n *Network) populateFlowTables(h1, h2 *Host) error {
-	if h1 == nil || h2 == nil {
-		return errors.New("Null arguments!")
+	switch {
+	case h1 == nil:
+		return util.NewError(util.ErrNilArgument, "h1")
+	case h2 == nil:
+		return util.NewError(util.ErrNilArgument, "h2")
 	}
 
 	entries, err := n.GetFlowRulesForSwitchPath(h1.sw, h2.sw, h1.SwitchPort(), h2.SwitchPort())
@@ -256,13 +262,16 @@ func (n *Network) GetFlowRulesForSwitchPath(
 	inPortSrcSw int64,
 	outPortDestSw int64,
 ) (map[int64][]util.I64Tup, error) {
-	if srcSw == nil || destSw == nil {
-		return make(map[int64][]util.I64Tup), errors.New("Null arguments!")
+	switch {
+	case srcSw == nil:
+		return make(map[int64][]util.I64Tup), util.NewError(util.ErrNilArgument, "srcSw")
+	case destSw == nil:
+		return make(map[int64][]util.I64Tup), util.NewError(util.ErrNilArgument, "destSw")
 	}
 
 	path, exists := n.shortestPaths[util.NewI64Tup(srcSw.topoNode.ID(), destSw.topoNode.ID())]
 	if !exists {
-		return make(map[int64][]util.I64Tup), errors.New("Could not find path between switches!")
+		return make(map[int64][]util.I64Tup), util.NewError(util.ErrNoPathBetweenSwitches)
 	}
 
 	entries := make(map[int64][]util.I64Tup)
@@ -292,7 +301,7 @@ func (n *Network) GetFlowRulesForSwitchPath(
 
 func (n *Network) AddAndConnectHosts(hostsNr uint) error {
 	if hostsNr < 2 {
-		return errors.New("Number of hosts must be at least 2!")
+		return util.NewError(util.ErrHostsNrAtLeast2)
 	}
 
 	err := n.assignHosts(hostsNr)
@@ -324,11 +333,11 @@ starting from the first controller.
 */
 func (n *Network) AddControllers(controllersNr uint) error {
 	if controllersNr == 0 {
-		return errors.New("Number of controllers to be added must be at least 1")
+		return util.NewError(util.ErrControllersNrAtLeast1)
 	}
 
-	if int(controllersNr) > len(n.switches) {
-		return errors.New("Cannot have more controllers than switches")
+	if int(controllersNr)+len(n.controllers) > len(n.switches) {
+		return util.NewError(util.ErrMoreContsThanSwitches)
 	}
 
 	nodeIds := slices.Collect(maps.Keys(n.nodeIdToSw))

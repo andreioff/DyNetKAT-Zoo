@@ -1,6 +1,8 @@
 package convert
 
-import "errors"
+import (
+	"utwente.nl/topology-to-dynetkat-coverter/util"
+)
 
 type Host struct {
 	id         int64
@@ -10,7 +12,7 @@ type Host struct {
 
 func NewHost(id, switchPort int64, sw *Switch) (Host, error) {
 	if sw == nil {
-		return Host{}, errors.New("Received nil switch!")
+		return Host{}, util.NewError(util.ErrNilArgument, "sw")
 	}
 
 	return Host{

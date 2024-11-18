@@ -1,9 +1,8 @@
 package convert
 
 import (
-	"errors"
-
 	"gonum.org/v1/gonum/graph"
+	"utwente.nl/topology-to-dynetkat-coverter/util"
 )
 
 type Switch struct {
@@ -17,7 +16,7 @@ type Switch struct {
 
 func NewSwitch(node graph.Node, links []*Link) (*Switch, error) {
 	if node == nil {
-		return &Switch{}, errors.New("Nil topology node!")
+		return &Switch{}, util.NewError(util.ErrNilArgument, "node")
 	}
 
 	return &Switch{
@@ -62,7 +61,7 @@ func (s *Switch) GetLinkPorts(otherNodeId int64) (int64, int64, error) {
 			return link.FromPort(), link.ToPort(), nil
 		}
 	}
-	return 0, 0, errors.New("Could not find link between switches!")
+	return 0, 0, util.NewError(util.ErrNoLinkBetweenSwitches)
 }
 
 func (s *Switch) GetController() *Controller {

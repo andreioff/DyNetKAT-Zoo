@@ -1,8 +1,6 @@
 package convert
 
 import (
-	"errors"
-
 	"utwente.nl/topology-to-dynetkat-coverter/util"
 )
 
@@ -61,7 +59,7 @@ new flow table if it doesn't exist. The flow table is created only if new flow r
 func (c *Controller) AddNewFlowRules(nodeId, destHostId int64, portTups []util.I64Tup) error {
 	sw := c.findSwitch(nodeId)
 	if sw == nil {
-		return errors.New("No switch matches the given node id!")
+		return util.NewError(util.ErrNoSwitchWithNodeId, nodeId)
 	}
 
 	ft, exists := c.newFlowTables[nodeId]

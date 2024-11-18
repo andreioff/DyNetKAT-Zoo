@@ -1,12 +1,12 @@
 package encode
 
 import (
-	"errors"
 	"fmt"
 	"log"
 	"strings"
 
 	"utwente.nl/topology-to-dynetkat-coverter/convert"
+	"utwente.nl/topology-to-dynetkat-coverter/util"
 )
 
 const (
@@ -61,7 +61,7 @@ func (f *LatexEncoder) ProactiveSwitch() bool {
 
 func (f *LatexEncoder) Encode(n *convert.Network) (string, error) {
 	if n == nil {
-		return "", errors.New("Received nil network!")
+		return "", util.NewError(util.ErrNilArgument, "n")
 	}
 
 	fmtSwitches, nonEmptySwitches := f.encodeSwitches(n.Switches())
@@ -297,7 +297,7 @@ count of the current division.
 */
 func divideLatexString(str string, divLen int) ([]string, error) {
 	if divLen < 1 {
-		return []string{}, errors.New("Zero or negative division length!")
+		return []string{}, util.NewError(util.ErrZeroOrNegDivisionLength)
 	}
 
 	divisions, charCount, divStart, isInsideSymbol, toAdd := []string{}, 0, 0, false, 0

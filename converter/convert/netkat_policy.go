@@ -38,12 +38,12 @@ func (snp *SimpleNetKATPolicy) ToString(AndSym, EqSym, AssignSym string) string 
 
 	prefix := ""
 	for _, test := range snp.completeTest {
-		sb.WriteString(fmt.Sprintf("%s(%s %s %s)", prefix, test.Fst, EqSym, test.Snd))
+		sb.WriteString(fmt.Sprintf("%s(%s%s%s)", prefix, test.Fst, EqSym, test.Snd))
 		prefix = AndSym
 	}
 
 	for _, assig := range snp.completeAssignment {
-		sb.WriteString(fmt.Sprintf("%s(%s %s %s)", prefix, assig.Fst, AssignSym, assig.Snd))
+		sb.WriteString(fmt.Sprintf("%s(%s%s%s)", prefix, assig.Fst, AssignSym, assig.Snd))
 	}
 
 	return sb.String()

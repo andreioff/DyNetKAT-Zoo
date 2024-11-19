@@ -1,7 +1,6 @@
 package convert
 
 import (
-	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -23,9 +22,8 @@ func TestNewSimpleNetKATPolicy(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := NewSimpleNetKATPolicy(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NewSimpleNetKATPolicy() = %v, want %v", got, tt.want)
-			}
+			got := NewSimpleNetKATPolicy()
+			assert.EqualValues(t, tt.want, got)
 		})
 	}
 }
@@ -325,9 +323,9 @@ func TestSimpleNetKATPolicy_ToString(t *testing.T) {
 				completeTest:       tt.fields.completeTest,
 				completeAssignment: tt.fields.completeAssignment,
 			}
-			if got := snp.ToString(tt.args.AndSym, tt.args.EqSym, tt.args.AssignSym); got != tt.want {
-				t.Errorf("SimpleNetKATPolicy.ToString() = %v, want %v", got, tt.want)
-			}
+
+			got := snp.ToString(tt.args.AndSym, tt.args.EqSym, tt.args.AssignSym)
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }

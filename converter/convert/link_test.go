@@ -7,7 +7,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"gonum.org/v1/gonum/graph"
 	"gonum.org/v1/gonum/graph/simple"
-
 	"utwente.nl/topology-to-dynetkat-coverter/util"
 )
 
@@ -61,6 +60,54 @@ func TestConvert_NewLink(t *testing.T) {
 			if tc.assertSetup != nil {
 				tc.assertSetup(t, link, err)
 			}
+		})
+	}
+}
+
+func TestLink_IsIncidentToNode(t *testing.T) {
+	type args struct {
+		nodeId int64
+	}
+	tests := []struct {
+		name     string
+		topoEdge graph.Edge
+		args     args
+		want     bool
+	}{
+		{
+			name:     "Non-existent node id [Success]",
+			topoEdge: simple.Edge{F: simple.Node(5), T: simple.Node(1)},
+			args: args{
+				nodeId: 4,
+			},
+			want: false,
+		},
+		{
+			name:     "From node id [Success]",
+			topoEdge: simple.Edge{F: simple.Node(5), T: simple.Node(1)},
+			args: args{
+				nodeId: 5,
+			},
+			want: true,
+		},
+		{
+			name:     "To node id [Success]",
+			topoEdge: simple.Edge{F: simple.Node(5), T: simple.Node(1)},
+			args: args{
+				nodeId: 1,
+			},
+			want: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			l := &Link{
+				topoEdge: tt.topoEdge,
+				fromPort: 0,
+				toPort:   0,
+			}
+			got := l.IsIncidentToNode(tt.args.nodeId)
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }

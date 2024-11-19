@@ -8,7 +8,6 @@ import (
 type Switch struct {
 	topoNode   graph.Node
 	controller *Controller
-	hosts      []*Host
 	flowTable  *FlowTable
 
 	links []*Link // outgoing links
@@ -19,21 +18,33 @@ func NewSwitch(node graph.Node, links []*Link) (*Switch, error) {
 		return &Switch{}, util.NewError(util.ErrNilArgument, "node")
 	}
 
+	if !onlyIncidentLinks(node, links) {
+		return &Switch{}, util.NewError(util.ErrOnlyIncidentLinksForSwitch)
+	}
+
 	return &Switch{
 		topoNode:   node,
-		hosts:      []*Host{},
 		controller: nil,
 		flowTable:  NewFlowTable(),
 		links:      links,
 	}, nil
 }
 
-func (s *Switch) TopoNode() graph.Node {
-	return s.topoNode
+func onlyIncidentLinks(node graph.Node, links []*Link) bool {
+	if node == nil {
+		return false
+	}
+
+	for _, l := range links {
+		if !l.IsIncidentToNode(node.ID()) {
+			return false
+		}
+	}
+	return true
 }
 
-func (s *Switch) Hosts() []*Host {
-	return s.hosts
+func (s *Switch) TopoNode() graph.Node {
+	return s.topoNode
 }
 
 func (s *Switch) FlowTable() *FlowTable {
@@ -44,8 +55,8 @@ func (s *Switch) Controller() *Controller {
 	return s.controller
 }
 
-func (s *Switch) AddHost(h *Host) {
-	s.hosts = append(s.hosts, h)
+func (s *Switch) SetController(c *Controller) {
+	s.controller = c
 }
 
 /*
@@ -62,12 +73,4 @@ func (s *Switch) GetLinkPorts(otherNodeId int64) (int64, int64, error) {
 		}
 	}
 	return 0, 0, util.NewError(util.ErrNoLinkBetweenSwitches)
-}
-
-func (s *Switch) GetController() *Controller {
-	return s.controller
-}
-
-func (s *Switch) SetController(c *Controller) {
-	s.controller = c
 }

@@ -27,4 +27,5 @@ const (
 	ErrControllersNrAtLeast1       = "Number of controllers to be added must be at least 1!"
 	ErrMoreContsThanSwitches       = "Cannot add more controllers than switches to the network!"
 	ErrZeroOrNegDivisionLength     = "Zero or negative division length!"
+	ErrOnlyIncidentLinksForSwitch  = "Switch must receive only links that are connected to it!"
 )

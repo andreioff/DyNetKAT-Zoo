@@ -182,9 +182,6 @@ func (n *Network) assignHosts(hostsNr uint) error {
 		return err
 	}
 
-	for _, h := range hosts {
-		h.sw.AddHost(h)
-	}
 	n.hosts = hosts
 
 	return nil

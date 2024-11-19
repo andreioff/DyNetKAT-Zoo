@@ -14,7 +14,6 @@ func TestConvert_NewHost(t *testing.T) {
 	mockSw := &Switch{
 		topoNode:   simple.Node(0),
 		controller: nil,
-		hosts:      []*Host{},
 		flowTable:  nil,
 		links:      []*Link{},
 	}
@@ -44,7 +43,7 @@ func TestConvert_NewHost(t *testing.T) {
 				assert.Equal(t, int64(-1), host.id)
 				assert.Equal(t, int64(4), host.switchPort)
 				assert.NotNil(t, host.sw)
-				assert.Equal(t, int64(0), host.sw.TopoNode().ID())
+				assert.Equal(t, int64(0), host.sw.topoNode.ID())
 			},
 		},
 		"Host Getters [Success]": {
@@ -55,7 +54,7 @@ func TestConvert_NewHost(t *testing.T) {
 				assert.Equal(t, int64(1), host.ID())
 				assert.Equal(t, int64(-3), host.SwitchPort())
 				assert.NotNil(t, host.Switch())
-				assert.Equal(t, int64(0), host.Switch().TopoNode().ID())
+				assert.Equal(t, int64(0), host.Switch().topoNode.ID())
 			},
 		},
 	}

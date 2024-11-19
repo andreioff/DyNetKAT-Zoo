@@ -34,3 +34,7 @@ func (l *Link) FromPort() int64 {
 func (l *Link) ToPort() int64 {
 	return l.toPort
 }
+
+func (l *Link) IsIncidentToNode(nodeId int64) bool {
+	return l.topoEdge.From().ID() == nodeId || l.topoEdge.To().ID() == nodeId
+}

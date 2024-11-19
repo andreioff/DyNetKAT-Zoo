@@ -19,7 +19,6 @@ type Network struct {
 	controllers []*Controller
 	hosts       []*Host
 	portNr      int64
-	hostId      int64
 }
 
 func NewNetwork(topo util.Graph) (*Network, error) {
@@ -41,7 +40,6 @@ func NewNetwork(topo util.Graph) (*Network, error) {
 		switches:      switches,
 		nodeIdToSw:    mapNodeToSwitch(switches),
 		portNr:        portNr,
-		hostId:        0,
 		hosts:         []*Host{},
 	}, nil
 }
@@ -196,13 +194,12 @@ func (n *Network) CreateHosts(hostsNr uint) ([]*Host, error) {
 	}
 
 	for _, randSw := range randSws {
-		newHost, err := NewHost(n.hostId, n.portNr, randSw)
+		newHost, err := NewHost(n.portNr, randSw)
 		if err != nil {
 			return []*Host{}, err
 		}
-		hosts = append(hosts, &newHost)
+		hosts = append(hosts, newHost)
 
-		n.hostId++
 		n.portNr++
 	}
 
@@ -349,7 +346,13 @@ func (n *Network) AddControllers(controllersNr uint) error {
 		for _, nodeId := range slice {
 			switches = append(switches, n.nodeIdToSw[nodeId])
 		}
-		n.controllers = append(n.controllers, NewController(switches))
+
+		c, err := NewController(switches)
+		if err != nil {
+			return err
+		}
+
+		n.controllers = append(n.controllers, c)
 	}
 
 	return nil

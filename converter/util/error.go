@@ -28,4 +28,5 @@ const (
 	ErrMoreContsThanSwitches       = "Cannot add more controllers than switches to the network!"
 	ErrZeroOrNegDivisionLength     = "Zero or negative division length!"
 	ErrOnlyIncidentLinksForSwitch  = "Switch must receive only links that are connected to it!"
+	ErrNilInArray                  = "Found nil elements in array '%s'"
 )

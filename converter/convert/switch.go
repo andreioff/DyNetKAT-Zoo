@@ -18,8 +18,8 @@ func NewSwitch(node graph.Node, links []*Link) (*Switch, error) {
 		return &Switch{}, util.NewError(util.ErrNilArgument, "node")
 	}
 
-	if !onlyIncidentLinks(node, links) {
-		return &Switch{}, util.NewError(util.ErrOnlyIncidentLinksForSwitch)
+	if err := validateLinks(node, links); err != nil {
+		return &Switch{}, err
 	}
 
 	return &Switch{
@@ -30,17 +30,21 @@ func NewSwitch(node graph.Node, links []*Link) (*Switch, error) {
 	}, nil
 }
 
-func onlyIncidentLinks(node graph.Node, links []*Link) bool {
+func validateLinks(node graph.Node, links []*Link) error {
 	if node == nil {
-		return false
+		return util.NewError(util.ErrNilArgument, "node")
 	}
 
 	for _, l := range links {
+		if l == nil {
+			return util.NewError(util.ErrNilInArray, "links")
+		}
+
 		if !l.IsIncidentToNode(node.ID()) {
-			return false
+			return util.NewError(util.ErrOnlyIncidentLinksForSwitch)
 		}
 	}
-	return true
+	return nil
 }
 
 func (s *Switch) TopoNode() graph.Node {

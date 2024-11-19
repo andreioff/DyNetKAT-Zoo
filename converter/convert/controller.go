@@ -4,10 +4,10 @@ import (
 	"utwente.nl/topology-to-dynetkat-coverter/util"
 )
 
-var id int64
+var controllerId int64
 
 func init() {
-	id = 0
+	controllerId = 0
 }
 
 type Controller struct {
@@ -28,19 +28,33 @@ func (c *Controller) NewFlowTables() map[int64]*FlowTable {
 	return c.newFlowTables
 }
 
-func NewController(switches []*Switch) *Controller {
+func NewController(switches []*Switch) (*Controller, error) {
+	if err := validateSwitches(switches); err != nil {
+		return &Controller{}, err
+	}
+
 	c := &Controller{
-		id:            id,
+		id:            controllerId,
 		switches:      switches,
 		newFlowTables: make(map[int64]*FlowTable),
 	}
-	id++
+	controllerId++
 
 	for _, s := range switches {
 		s.SetController(c)
 	}
 
-	return c
+	return c, nil
+}
+
+func validateSwitches(switches []*Switch) error {
+	for _, s := range switches {
+		if s == nil {
+			return util.NewError(util.ErrNilInArray, "switches")
+		}
+	}
+
+	return nil
 }
 
 func (c *Controller) findSwitch(nodeId int64) *Switch {
@@ -64,7 +78,7 @@ func (c *Controller) AddNewFlowRules(nodeId, destHostId int64, portTups []util.I
 
 	ft, exists := c.newFlowTables[nodeId]
 	if !exists {
-		if !c.newEntriesExist(sw.FlowTable(), destHostId, portTups) {
+		if !newEntriesExist(sw.FlowTable(), destHostId, portTups) {
 			return nil
 		}
 		c.newFlowTables[nodeId] = sw.FlowTable().Copy()
@@ -78,7 +92,7 @@ func (c *Controller) AddNewFlowRules(nodeId, destHostId int64, portTups []util.I
 	return nil
 }
 
-func (c *Controller) newEntriesExist(
+func newEntriesExist(
 	swFt *FlowTable,
 	destHostId int64,
 	portTups []util.I64Tup,

@@ -385,23 +385,23 @@ func TestSwitch_GetLinkPorts(t *testing.T) {
 	}
 }
 
-func Test_onlyIncidentLinks(t *testing.T) {
+func Test_validateLinks(t *testing.T) {
 	type args struct {
 		node  graph.Node
 		links []*Link
 	}
 	tests := []struct {
-		name string
-		args args
-		want bool
+		name    string
+		args    args
+		wantErr string
 	}{
 		{
-			name: "Nil node [Success]",
+			name: "Nil node [Error]",
 			args: args{
 				node:  nil,
 				links: []*Link{},
 			},
-			want: false,
+			wantErr: fmt.Sprintf(util.ErrNilArgument, "node"),
 		},
 		{
 			name: "Empty links [Success]",
@@ -409,7 +409,6 @@ func Test_onlyIncidentLinks(t *testing.T) {
 				node:  simple.Node(1),
 				links: []*Link{},
 			},
-			want: true,
 		},
 		{
 			name: "Only incident links [Success]",
@@ -438,7 +437,6 @@ func Test_onlyIncidentLinks(t *testing.T) {
 					},
 				},
 			},
-			want: true,
 		},
 		{
 			name: "Non-incident link [Success]",
@@ -462,13 +460,33 @@ func Test_onlyIncidentLinks(t *testing.T) {
 					},
 				},
 			},
-			want: false,
+			wantErr: util.ErrOnlyIncidentLinksForSwitch,
+		},
+		{
+			name: "Nil links [Success]",
+			args: args{
+				node: simple.Node(1),
+				links: []*Link{
+					{
+						topoEdge: simple.Edge{F: simple.Node(1), T: simple.Node(2)},
+						fromPort: 3,
+						toPort:   4,
+					},
+					nil,
+				},
+			},
+			wantErr: fmt.Sprintf(util.ErrNilInArray, "links"),
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := onlyIncidentLinks(tt.args.node, tt.args.links)
-			assert.Equal(t, tt.want, got)
+			gotErr := validateLinks(tt.args.node, tt.args.links)
+			if tt.wantErr == "" {
+				assert.Nil(t, gotErr)
+			} else {
+				assert.NotNil(t, gotErr)
+				assert.Equal(t, tt.wantErr, gotErr.Error())
+			}
 		})
 	}
 }

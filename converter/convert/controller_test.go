@@ -130,7 +130,7 @@ func TestNewController(t *testing.T) {
 	}
 }
 
-func TestController_findSwitch(t *testing.T) {
+func TestController_FindSwitch(t *testing.T) {
 	type fields struct {
 		id            int64
 		switches      []*Switch
@@ -220,7 +220,7 @@ func TestController_findSwitch(t *testing.T) {
 				switches:      tt.fields.switches,
 				newFlowTables: tt.fields.newFlowTables,
 			}
-			got := c.findSwitch(tt.args.nodeId)
+			got := c.FindSwitch(tt.args.nodeId)
 			assert.EqualValues(t, tt.want, got)
 		})
 	}

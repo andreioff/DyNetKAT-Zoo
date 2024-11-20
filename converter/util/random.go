@@ -7,7 +7,7 @@ import (
 	"slices"
 )
 
-const SEED int64 = 3
+const SEED int64 = 31
 
 var randGen rand.Rand
 

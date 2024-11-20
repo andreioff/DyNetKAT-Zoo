@@ -66,6 +66,23 @@ func (n *Network) Switches() []*Switch {
 	return n.switches
 }
 
+func (n *Network) GetSwitchesWithUpdates() []*Switch {
+	withUpdates := []*Switch{}
+	for _, sw := range n.switches {
+		c := sw.Controller()
+		if c == nil {
+			continue
+		}
+
+		_, exists := c.NewFlowTables()[sw.TopoNode().ID()]
+		if exists {
+			withUpdates = append(withUpdates, sw)
+		}
+	}
+
+	return withUpdates
+}
+
 func (n *Network) Hosts() []*Host {
 	return n.hosts
 }

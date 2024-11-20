@@ -45,6 +45,46 @@ func (ft *FlowTable) hasEntry(hostId int64, fr FlowRule) bool {
 	return false
 }
 
+/*
+Returns a pointer to a new flow table containing only
+the flow rules of the current flow table that satisfy
+the given predicate.
+*/
+func (ft *FlowTable) Filter(pred func(FlowRule) bool) *FlowTable {
+	newFt := NewFlowTable()
+	entries := make(map[int64][]FlowRule)
+
+	for hostId, frs := range ft.entries {
+		newFrs := []FlowRule{}
+		for _, fr := range frs {
+			if pred(fr) {
+				newFrs = append(newFrs, fr)
+			}
+		}
+
+		if len(newFrs) > 0 {
+			entries[hostId] = newFrs
+		}
+	}
+	newFt.setEntries(entries)
+
+	return newFt
+}
+
+// Extends the current flow table with the entries of the
+// given flow table
+func (ft *FlowTable) Extend(otherFt *FlowTable) {
+	if otherFt == nil {
+		return
+	}
+
+	for hostId, frs := range otherFt.entries {
+		for _, fr := range frs {
+			ft.AddEntry(hostId, fr)
+		}
+	}
+}
+
 func (ft *FlowTable) ToNetKATPolicies() []*SimpleNetKATPolicy {
 	policies := []*SimpleNetKATPolicy{}
 

@@ -10,6 +10,7 @@ import (
 
 const (
 	NEW_LN               = "\\\\\n"
+	DNEW_LN              = NEW_LN + NEW_LN
 	NEW_PAGE             = "\n\\newpage\n"
 	BEGIN_EQ_ARRAY       = "\\begin{equation} \\begin{array}{rcl}\n\n"
 	END_EQ_ARRAY         = "\n\n\\end{array} \\end{equation}\n"

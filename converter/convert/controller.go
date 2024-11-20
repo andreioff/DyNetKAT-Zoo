@@ -57,7 +57,7 @@ func validateSwitches(switches []*Switch) error {
 	return nil
 }
 
-func (c *Controller) findSwitch(nodeId int64) *Switch {
+func (c *Controller) FindSwitch(nodeId int64) *Switch {
 	for _, sw := range c.switches {
 		if sw.topoNode.ID() == nodeId {
 			return sw
@@ -71,7 +71,7 @@ Adds flow rules to the new flow table of the switch with the given node id, crea
 new flow table if it doesn't exist. The flow table is created only if new flow rules exist.
 */
 func (c *Controller) AddNewFlowRules(nodeId, destHostId int64, frs []FlowRule) error {
-	sw := c.findSwitch(nodeId)
+	sw := c.FindSwitch(nodeId)
 	if sw == nil {
 		return util.NewError(util.ErrNoSwitchWithNodeId, nodeId)
 	}

@@ -40,7 +40,7 @@ func main() {
 		log.Fatalln(err)
 	}
 
-	encoder := encode.NewLatexEncoder(false)
+	encoder := encode.NewLatexSimpleEncoder(false)
 	fmtNet, err := encoder.Encode(network)
 	if err != nil {
 		log.Fatalln(err)

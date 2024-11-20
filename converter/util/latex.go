@@ -1,6 +1,9 @@
 package util
 
-import "strings"
+import (
+	"log"
+	"strings"
+)
 
 /*
 Breaks the given string into slices of 'linesPerPage' lines based on the
@@ -18,6 +21,17 @@ func SliceContent(str string, linesPerPage int, sep string) []string {
 	}
 
 	return pages
+}
+
+// assumes the given string is in the third column (considered the last column) of the array environment
+func BreakColumn(line string, maxLength int, sep string) string {
+	divisions, err := DivideLatexString(line, maxLength)
+	if err != nil {
+		log.Println("Failed to break Latex string. Keeping the string unmodified...")
+		return line
+	}
+
+	return strings.Join(divisions, sep)
 }
 
 /*

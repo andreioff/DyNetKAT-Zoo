@@ -2,33 +2,19 @@ package encode
 
 import (
 	"fmt"
-	"log"
 	"strings"
 
 	"utwente.nl/topology-to-dynetkat-coverter/convert"
 	"utwente.nl/topology-to-dynetkat-coverter/util"
 )
 
-const (
-	NEW_LN               = "\\\\\n"
-	NEW_PAGE             = "\n\\newpage\n"
-	BEGIN_EQ_ARRAY       = "\\begin{equation} \\begin{array}{rcl}\n\n"
-	END_EQ_ARRAY         = "\n\n\\end{array} \\end{equation}\n"
-	THIRD_COL_MAX_LEN    = 40 // nr of chars before the third column of the array env overflows
-	LINES_PER_PAGE       = 40
-	SW_BASE_NAME         = "SW"
-	CONTROLLER_BASE_NAME = "C"
-	UP_CHANNEL_NAME      = "Up"
-	HELP_CHANNEL_NAME    = "Help"
-)
-
-type LatexEncoder struct {
+type LatexBigSwitchEncoder struct {
 	sym             SymbolEncoding
 	proactiveSwitch bool
 }
 
-func NewLatexEncoder(proactiveSwitch bool) LatexEncoder {
-	return LatexEncoder{
+func NewLatexBigSwitchEncoder(proactiveSwitch bool) LatexBigSwitchEncoder {
+	return LatexBigSwitchEncoder{
 		sym: SymbolEncoding{
 			ONE:    "1",
 			ZERO:   "0",
@@ -51,15 +37,15 @@ func NewLatexEncoder(proactiveSwitch bool) LatexEncoder {
 	}
 }
 
-func (f *LatexEncoder) SymbolEncodings() SymbolEncoding {
+func (f *LatexBigSwitchEncoder) SymbolEncodings() SymbolEncoding {
 	return f.sym
 }
 
-func (f *LatexEncoder) ProactiveSwitch() bool {
+func (f *LatexBigSwitchEncoder) ProactiveSwitch() bool {
 	return f.proactiveSwitch
 }
 
-func (f *LatexEncoder) Encode(n *convert.Network) (string, error) {
+func (f *LatexBigSwitchEncoder) Encode(n *convert.Network) (string, error) {
 	if n == nil {
 		return "", util.NewError(util.ErrNilArgument, "n")
 	}
@@ -85,7 +71,9 @@ func (f *LatexEncoder) Encode(n *convert.Network) (string, error) {
 	return sb.String(), nil
 }
 
-func (f *LatexEncoder) encodeSwitches(switches []*convert.Switch) (string, []*convert.Switch) {
+func (f *LatexBigSwitchEncoder) encodeSwitches(
+	switches []*convert.Switch,
+) (string, []*convert.Switch) {
 	nonEmptySwitches := []*convert.Switch{}
 	var sb strings.Builder
 
@@ -120,7 +108,7 @@ func (f *LatexEncoder) encodeSwitches(switches []*convert.Switch) (string, []*co
 	return sb.String(), nonEmptySwitches
 }
 
-func (f *LatexEncoder) encodeSwitch(sw convert.Switch, canBeEmpty bool) string {
+func (f *LatexBigSwitchEncoder) encodeSwitch(sw convert.Switch, canBeEmpty bool) string {
 	swName := f.encodeSwitchName(sw, false)
 
 	fmtFlowRules := f.encodeNetKATPolicies(sw.FlowTable().ToNetKATPolicies(), swName)
@@ -140,7 +128,7 @@ func (f *LatexEncoder) encodeSwitch(sw convert.Switch, canBeEmpty bool) string {
 	return fmt.Sprintf("%s & %s & %s %s", swName, f.sym.DEF, fmtSw, NEW_LN)
 }
 
-func (f *LatexEncoder) encodeNetKATPolicies(
+func (f *LatexBigSwitchEncoder) encodeNetKATPolicies(
 	policies []*convert.SimpleNetKATPolicy,
 	swName string,
 ) []string {
@@ -156,7 +144,7 @@ func (f *LatexEncoder) encodeNetKATPolicies(
 	return fmtFlowRules
 }
 
-func (f *LatexEncoder) encodeCommunication(
+func (f *LatexBigSwitchEncoder) encodeCommunication(
 	termName string,
 	channelId int64,
 	fromSwitch bool,
@@ -192,7 +180,10 @@ func (f *LatexEncoder) encodeCommunication(
 	)
 }
 
-func (f *LatexEncoder) encodeSDNTerm(sws []*convert.Switch, c []*convert.Controller) string {
+func (f *LatexBigSwitchEncoder) encodeSDNTerm(
+	sws []*convert.Switch,
+	c []*convert.Controller,
+) string {
 	var sb strings.Builder
 
 	prefix := ""
@@ -208,7 +199,7 @@ func (f *LatexEncoder) encodeSDNTerm(sws []*convert.Switch, c []*convert.Control
 	return fmt.Sprintf("SDN & %s & %s", f.sym.DEF, breakColumn(sb.String()))
 }
 
-func (f *LatexEncoder) encodeSwitchName(sw convert.Switch, isNew bool) string {
+func (f *LatexBigSwitchEncoder) encodeSwitchName(sw convert.Switch, isNew bool) string {
 	name := fmt.Sprintf("%s%d", SW_BASE_NAME, sw.TopoNode().ID())
 	if isNew {
 		return name + "'"
@@ -216,7 +207,7 @@ func (f *LatexEncoder) encodeSwitchName(sw convert.Switch, isNew bool) string {
 	return name
 }
 
-func (f *LatexEncoder) encodeControllers(
+func (f *LatexBigSwitchEncoder) encodeControllers(
 	controllers []*convert.Controller,
 ) (string, []*convert.Controller) {
 	usedControllers := []*convert.Controller{}
@@ -234,7 +225,7 @@ func (f *LatexEncoder) encodeControllers(
 	return sb.String(), usedControllers
 }
 
-func (f *LatexEncoder) encodeController(c *convert.Controller) string {
+func (f *LatexBigSwitchEncoder) encodeController(c *convert.Controller) string {
 	fmtCommStrs := []string{}
 	cName := fmt.Sprintf("%s%d", CONTROLLER_BASE_NAME, c.ID())
 
@@ -251,19 +242,8 @@ func (f *LatexEncoder) encodeController(c *convert.Controller) string {
 	return fmt.Sprintf("%s & %s & %s %s", cName, f.sym.DEF, fmtC, NEW_LN)
 }
 
-func (f *LatexEncoder) joinNonDetThridColumn(strs []string) string {
+func (f *LatexBigSwitchEncoder) joinNonDetThridColumn(strs []string) string {
 	// '& & ' are for placing the conent in the third column of the array env
 	nonDetSep := fmt.Sprintf(" %s %s& & ", f.sym.NONDET, NEW_LN)
 	return strings.Join(strs, nonDetSep)
-}
-
-// assumes the given string is in the third column (considered the last column) of the array environment
-func breakColumn(line string) string {
-	divisions, err := util.DivideLatexString(line, THIRD_COL_MAX_LEN)
-	if err != nil {
-		log.Println("Failed to break Latex string. Keeping the string unmodified...")
-		return line
-	}
-
-	return strings.Join(divisions, NEW_LN+"& & ")
 }

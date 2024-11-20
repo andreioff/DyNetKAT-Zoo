@@ -70,7 +70,7 @@ func (c *Controller) findSwitch(nodeId int64) *Switch {
 Adds flow rules to the new flow table of the switch with the given node id, creating the
 new flow table if it doesn't exist. The flow table is created only if new flow rules exist.
 */
-func (c *Controller) AddNewFlowRules(nodeId, destHostId int64, portTups []util.I64Tup) error {
+func (c *Controller) AddNewFlowRules(nodeId, destHostId int64, frs []FlowRule) error {
 	sw := c.findSwitch(nodeId)
 	if sw == nil {
 		return util.NewError(util.ErrNoSwitchWithNodeId, nodeId)
@@ -78,15 +78,15 @@ func (c *Controller) AddNewFlowRules(nodeId, destHostId int64, portTups []util.I
 
 	ft, exists := c.newFlowTables[nodeId]
 	if !exists {
-		if !newEntriesExist(sw.FlowTable(), destHostId, portTups) {
+		if !newEntriesExist(sw.FlowTable(), destHostId, frs) {
 			return nil
 		}
 		c.newFlowTables[nodeId] = sw.FlowTable().Copy()
 		ft = c.newFlowTables[nodeId]
 	}
 
-	for _, inPortOutPort := range portTups {
-		ft.AddEntry(destHostId, inPortOutPort.Fst, inPortOutPort.Snd)
+	for _, fr := range frs {
+		ft.AddEntry(destHostId, fr)
 	}
 
 	return nil
@@ -95,15 +95,14 @@ func (c *Controller) AddNewFlowRules(nodeId, destHostId int64, portTups []util.I
 func newEntriesExist(
 	swFt *FlowTable,
 	destHostId int64,
-	portTups []util.I64Tup,
+	frs []FlowRule,
 ) bool {
 	if swFt == nil {
 		return true
 	}
 
-	for _, inPortOutPort := range portTups {
-		hasEntry := swFt.hasEntry(util.NewI64Tup(destHostId, inPortOutPort.Fst), inPortOutPort.Snd)
-		if !hasEntry {
+	for _, fr := range frs {
+		if !swFt.hasEntry(destHostId, fr) {
 			return true
 		}
 	}

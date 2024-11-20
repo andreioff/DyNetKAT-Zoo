@@ -79,20 +79,24 @@ func addNewHostConnFlowRules(newHost *convert.Host, n *convert.Network) error {
 func addEntriesToControllerNewFlowTables(
 	n *convert.Network,
 	destHostId int64,
-	newEntries map[int64][]util.I64Tup,
+	newEntries map[int64][]convert.FlowRule,
 ) error {
 	if n == nil {
 		return util.NewError(util.ErrNilArgument, "n")
 	}
 
-	for nodeId, portTups := range newEntries {
-		sw := n.NodeIdToSw()[nodeId]
+	for nodeId, frs := range newEntries {
+		sw, err := n.GetSwitch(nodeId)
+		if err != nil {
+			return err
+		}
+
 		c := sw.Controller()
 		if c == nil {
 			return util.NewError(util.ErrSwitchHasNilController)
 		}
 
-		c.AddNewFlowRules(nodeId, destHostId, portTups)
+		c.AddNewFlowRules(nodeId, destHostId, frs)
 	}
 
 	return nil

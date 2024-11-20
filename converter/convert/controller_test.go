@@ -230,7 +230,7 @@ func Test_newEntriesExist(t *testing.T) {
 	type args struct {
 		swFt       *FlowTable
 		destHostId int64
-		portTups   []util.I64Tup
+		flowRules  []FlowRule
 	}
 	tests := []struct {
 		name string
@@ -242,31 +242,31 @@ func Test_newEntriesExist(t *testing.T) {
 			args: args{
 				swFt:       nil,
 				destHostId: 0,
-				portTups:   []util.I64Tup{},
+				flowRules:  []FlowRule{},
 			},
 			want: true,
 		},
 		{
 			name: "Empty entries [Success]",
 			args: args{
-				swFt:       &FlowTable{entries: make(map[util.I64Tup][]int64)},
+				swFt:       &FlowTable{entries: make(map[int64][]FlowRule)},
 				destHostId: 0,
-				portTups:   []util.I64Tup{},
+				flowRules:  []FlowRule{},
 			},
 			want: false,
 		},
 		{
 			name: "Existing entries [Success]",
 			args: args{
-				swFt: &FlowTable{entries: map[util.I64Tup][]int64{
-					{Fst: 0, Snd: 10}: {11, 12},
-					{Fst: 1, Snd: 13}: {14},
-					{Fst: 3, Snd: 15}: {16, 17},
+				swFt: &FlowTable{entries: map[int64][]FlowRule{
+					0: {{10, 11, false}, {10, 12, true}},
+					1: {{13, 14, false}},
+					3: {{15, 16, false}, {15, 17, true}},
 				}},
 				destHostId: 3,
-				portTups: []util.I64Tup{
-					{Fst: 15, Snd: 16},
-					{Fst: 15, Snd: 17},
+				flowRules: []FlowRule{
+					{15, 16, false},
+					{15, 17, true},
 				},
 			},
 			want: false,
@@ -274,15 +274,15 @@ func Test_newEntriesExist(t *testing.T) {
 		{
 			name: "New entries [Success]",
 			args: args{
-				swFt: &FlowTable{entries: map[util.I64Tup][]int64{
-					{Fst: 0, Snd: 10}: {11, 12},
-					{Fst: 1, Snd: 13}: {14},
-					{Fst: 3, Snd: 15}: {16, 17},
+				swFt: &FlowTable{entries: map[int64][]FlowRule{
+					0: {{10, 11, false}, {10, 12, true}},
+					1: {{13, 14, false}},
+					3: {{15, 16, false}, {15, 17, true}},
 				}},
 				destHostId: 4,
-				portTups: []util.I64Tup{
-					{Fst: 18, Snd: 19},
-					{Fst: 19, Snd: 20},
+				flowRules: []FlowRule{
+					{18, 19, false},
+					{19, 20, true},
 				},
 			},
 			want: true,
@@ -290,16 +290,16 @@ func Test_newEntriesExist(t *testing.T) {
 		{
 			name: "Mixed entries [Success]",
 			args: args{
-				swFt: &FlowTable{entries: map[util.I64Tup][]int64{
-					{Fst: 0, Snd: 10}: {11, 12},
-					{Fst: 1, Snd: 13}: {14},
-					{Fst: 3, Snd: 15}: {16, 17},
+				swFt: &FlowTable{entries: map[int64][]FlowRule{
+					0: {{10, 11, false}, {10, 12, true}},
+					1: {{13, 14, false}},
+					3: {{15, 16, false}, {15, 17, true}},
 				}},
 				destHostId: 3,
-				portTups: []util.I64Tup{
-					{Fst: 15, Snd: 16},
-					{Fst: 15, Snd: 17},
-					{Fst: 18, Snd: 19},
+				flowRules: []FlowRule{
+					{15, 16, false},
+					{15, 17, true},
+					{18, 19, false},
 				},
 			},
 			want: true,
@@ -307,7 +307,7 @@ func Test_newEntriesExist(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := newEntriesExist(tt.args.swFt, tt.args.destHostId, tt.args.portTups)
+			got := newEntriesExist(tt.args.swFt, tt.args.destHostId, tt.args.flowRules)
 			assert.Equal(t, tt.want, got)
 		})
 	}
@@ -322,7 +322,7 @@ func TestController_AddNewFlowRules(t *testing.T) {
 	type args struct {
 		nodeId     int64
 		destHostId int64
-		portTups   []util.I64Tup
+		flowRules  []FlowRule
 	}
 	tests := []struct {
 		name        string
@@ -354,7 +354,7 @@ func TestController_AddNewFlowRules(t *testing.T) {
 			args: args{
 				nodeId:     -1,
 				destHostId: 0,
-				portTups:   []util.I64Tup{},
+				flowRules:  []FlowRule{},
 			},
 			wantErr: fmt.Sprintf(util.ErrNoSwitchWithNodeId, -1),
 		},
@@ -367,10 +367,10 @@ func TestController_AddNewFlowRules(t *testing.T) {
 						topoNode:   simple.Node(1),
 						controller: nil,
 						flowTable: &FlowTable{
-							map[util.I64Tup][]int64{
-								{Fst: 0, Snd: 10}: {11, 12},
-								{Fst: 1, Snd: 13}: {14},
-								{Fst: 3, Snd: 15}: {16, 17},
+							map[int64][]FlowRule{
+								0: {{10, 11, false}, {10, 12, true}},
+								1: {{13, 14, false}},
+								3: {{15, 16, false}, {15, 17, true}},
 							},
 						},
 						links: []*Link{},
@@ -384,10 +384,10 @@ func TestController_AddNewFlowRules(t *testing.T) {
 				},
 				newFlowTables: map[int64]*FlowTable{
 					2: {
-						map[util.I64Tup][]int64{
-							{Fst: 4, Snd: 30}: {31, 32},
-							{Fst: 6, Snd: 33}: {34},
-							{Fst: 2, Snd: 35}: {36, 37},
+						map[int64][]FlowRule{
+							4: {{30, 31, false}, {30, 32, true}},
+							6: {{33, 34, false}},
+							2: {{35, 36, false}, {35, 37, true}},
 						},
 					},
 				},
@@ -395,7 +395,7 @@ func TestController_AddNewFlowRules(t *testing.T) {
 			args: args{
 				nodeId:     1,
 				destHostId: 1,
-				portTups:   []util.I64Tup{{Fst: 13, Snd: 14}},
+				flowRules:  []FlowRule{{13, 14, false}},
 			},
 			assertSetup: func(t *testing.T, c *Controller, initial *Controller) {
 				assert.EqualValues(t, initial, c)
@@ -410,10 +410,10 @@ func TestController_AddNewFlowRules(t *testing.T) {
 						topoNode:   simple.Node(1),
 						controller: nil,
 						flowTable: &FlowTable{
-							map[util.I64Tup][]int64{
-								{Fst: 0, Snd: 10}: {11, 12},
-								{Fst: 1, Snd: 13}: {14},
-								{Fst: 3, Snd: 15}: {16, 17},
+							map[int64][]FlowRule{
+								0: {{10, 11, false}, {10, 12, true}},
+								1: {{13, 14, true}},
+								3: {{15, 16, false}, {15, 17, true}},
 							},
 						},
 						links: []*Link{},
@@ -427,10 +427,10 @@ func TestController_AddNewFlowRules(t *testing.T) {
 				},
 				newFlowTables: map[int64]*FlowTable{
 					2: {
-						map[util.I64Tup][]int64{
-							{Fst: 4, Snd: 30}: {31, 32},
-							{Fst: 6, Snd: 33}: {34},
-							{Fst: 2, Snd: 35}: {36, 37},
+						map[int64][]FlowRule{
+							4: {{30, 31, false}, {30, 32, true}},
+							6: {{33, 34, false}},
+							2: {{35, 36, false}, {35, 37, true}},
 						},
 					},
 				},
@@ -438,23 +438,23 @@ func TestController_AddNewFlowRules(t *testing.T) {
 			args: args{
 				nodeId:     1,
 				destHostId: 1,
-				portTups:   []util.I64Tup{{Fst: 13, Snd: 19}, {Fst: 13, Snd: 20}},
+				flowRules:  []FlowRule{{13, 19, false}, {13, 20, true}},
 			},
 			assertSetup: func(t *testing.T, c *Controller, initial *Controller) {
 				assert.EqualValues(t, initial.switches, c.switches)
 				assert.EqualValues(t, map[int64]*FlowTable{
 					1: {
-						map[util.I64Tup][]int64{
-							{Fst: 0, Snd: 10}: {11, 12},
-							{Fst: 1, Snd: 13}: {14, 19, 20},
-							{Fst: 3, Snd: 15}: {16, 17},
+						map[int64][]FlowRule{
+							0: {{10, 11, false}, {10, 12, true}},
+							1: {{13, 14, true}, {13, 19, false}, {13, 20, true}},
+							3: {{15, 16, false}, {15, 17, true}},
 						},
 					},
 					2: {
-						map[util.I64Tup][]int64{
-							{Fst: 4, Snd: 30}: {31, 32},
-							{Fst: 6, Snd: 33}: {34},
-							{Fst: 2, Snd: 35}: {36, 37},
+						map[int64][]FlowRule{
+							4: {{30, 31, false}, {30, 32, true}},
+							6: {{33, 34, false}},
+							2: {{35, 36, false}, {35, 37, true}},
 						},
 					},
 				}, c.newFlowTables)
@@ -469,10 +469,10 @@ func TestController_AddNewFlowRules(t *testing.T) {
 						topoNode:   simple.Node(1),
 						controller: nil,
 						flowTable: &FlowTable{
-							map[util.I64Tup][]int64{
-								{Fst: 0, Snd: 10}: {11, 12},
-								{Fst: 1, Snd: 13}: {14},
-								{Fst: 3, Snd: 15}: {16, 17},
+							map[int64][]FlowRule{
+								0: {{10, 11, false}, {10, 12, true}},
+								1: {{13, 14, true}},
+								3: {{15, 16, false}, {15, 17, true}},
 							},
 						},
 						links: []*Link{},
@@ -486,17 +486,17 @@ func TestController_AddNewFlowRules(t *testing.T) {
 				},
 				newFlowTables: map[int64]*FlowTable{
 					1: {
-						map[util.I64Tup][]int64{
-							{Fst: 0, Snd: 10}: {11, 12},
-							{Fst: 1, Snd: 13}: {14, 19, 20},
-							{Fst: 3, Snd: 15}: {16, 17},
+						map[int64][]FlowRule{
+							0: {{10, 11, false}, {10, 12, true}},
+							1: {{13, 14, true}, {13, 19, false}, {13, 20, true}},
+							3: {{15, 16, false}, {15, 17, true}},
 						},
 					},
 					2: {
-						map[util.I64Tup][]int64{
-							{Fst: 4, Snd: 30}: {31, 32},
-							{Fst: 6, Snd: 33}: {34},
-							{Fst: 2, Snd: 35}: {36, 37},
+						map[int64][]FlowRule{
+							4: {{30, 31, false}, {30, 32, true}},
+							6: {{33, 34, false}},
+							2: {{35, 36, false}, {35, 37, true}},
 						},
 					},
 				},
@@ -504,7 +504,7 @@ func TestController_AddNewFlowRules(t *testing.T) {
 			args: args{
 				nodeId:     1,
 				destHostId: 1,
-				portTups:   []util.I64Tup{{Fst: 13, Snd: 19}, {Fst: 13, Snd: 20}},
+				flowRules:  []FlowRule{{13, 19, false}, {13, 20, true}},
 			},
 			assertSetup: func(t *testing.T, c *Controller, initial *Controller) {
 				assert.EqualValues(t, initial, c)
@@ -519,10 +519,10 @@ func TestController_AddNewFlowRules(t *testing.T) {
 						topoNode:   simple.Node(1),
 						controller: nil,
 						flowTable: &FlowTable{
-							map[util.I64Tup][]int64{
-								{Fst: 0, Snd: 10}: {11, 12},
-								{Fst: 1, Snd: 13}: {14},
-								{Fst: 3, Snd: 15}: {16, 17},
+							map[int64][]FlowRule{
+								0: {{10, 11, false}, {10, 12, true}},
+								1: {{13, 14, true}},
+								3: {{15, 16, false}, {15, 17, true}},
 							},
 						},
 						links: []*Link{},
@@ -536,18 +536,18 @@ func TestController_AddNewFlowRules(t *testing.T) {
 				},
 				newFlowTables: map[int64]*FlowTable{
 					1: {
-						map[util.I64Tup][]int64{
-							{Fst: 0, Snd: 10}: {11, 12},
-							{Fst: 1, Snd: 13}: {14},
-							{Fst: 3, Snd: 15}: {16, 17},
-							{Fst: 5, Snd: 18}: {19},
+						map[int64][]FlowRule{
+							0: {{10, 11, false}, {10, 12, true}},
+							1: {{13, 14, true}},
+							3: {{15, 16, false}, {15, 17, true}},
+							5: {{18, 19, false}},
 						},
 					},
 					2: {
-						map[util.I64Tup][]int64{
-							{Fst: 4, Snd: 30}: {31, 32},
-							{Fst: 6, Snd: 33}: {34},
-							{Fst: 2, Snd: 35}: {36, 37},
+						map[int64][]FlowRule{
+							4: {{30, 31, false}, {30, 32, true}},
+							6: {{33, 34, false}},
+							2: {{35, 36, false}, {35, 37, true}},
 						},
 					},
 				},
@@ -555,25 +555,24 @@ func TestController_AddNewFlowRules(t *testing.T) {
 			args: args{
 				nodeId:     1,
 				destHostId: 3,
-				portTups:   []util.I64Tup{{Fst: 15, Snd: 20}, {Fst: 21, Snd: 22}},
+				flowRules:  []FlowRule{{15, 20, false}, {21, 22, true}},
 			},
 			assertSetup: func(t *testing.T, c *Controller, initial *Controller) {
 				assert.EqualValues(t, initial.switches, c.switches)
 				assert.EqualValues(t, map[int64]*FlowTable{
 					1: {
-						map[util.I64Tup][]int64{
-							{Fst: 0, Snd: 10}: {11, 12},
-							{Fst: 1, Snd: 13}: {14},
-							{Fst: 3, Snd: 15}: {16, 17, 20},
-							{Fst: 3, Snd: 21}: {22},
-							{Fst: 5, Snd: 18}: {19},
+						map[int64][]FlowRule{
+							0: {{10, 11, false}, {10, 12, true}},
+							1: {{13, 14, true}},
+							3: {{15, 16, false}, {15, 17, true}, {15, 20, false}, {21, 22, true}},
+							5: {{18, 19, false}},
 						},
 					},
 					2: {
-						map[util.I64Tup][]int64{
-							{Fst: 4, Snd: 30}: {31, 32},
-							{Fst: 6, Snd: 33}: {34},
-							{Fst: 2, Snd: 35}: {36, 37},
+						map[int64][]FlowRule{
+							4: {{30, 31, false}, {30, 32, true}},
+							6: {{33, 34, false}},
+							2: {{35, 36, false}, {35, 37, true}},
 						},
 					},
 				}, c.newFlowTables)
@@ -589,7 +588,7 @@ func TestController_AddNewFlowRules(t *testing.T) {
 			}
 			c := *cInitial // copy
 
-			err := c.AddNewFlowRules(tt.args.nodeId, tt.args.destHostId, tt.args.portTups)
+			err := c.AddNewFlowRules(tt.args.nodeId, tt.args.destHostId, tt.args.flowRules)
 			if tt.wantErr == "" {
 				assert.Nil(t, err)
 			} else {

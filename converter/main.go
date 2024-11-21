@@ -12,9 +12,17 @@ const (
 	DIR        = "../topologyzoo/sources/graphml/"
 	OUTPUT_DIR = "./output/"
 	HOSTS_NR   = 5
-	// NETWORK_ID = "Atmnet.graphml" // 21 nodes
-	NETWORK_ID = "Arpanet196912.graphml" // 4 nodes
 )
+
+var NETWORK_IDS []string = []string{
+	"Atmnet.graphml",        // 21 nodes
+	"Arpanet196912.graphml", // 4 nodes
+	"Dataxchange.graphml",   // 6 nodes
+	"Renam.graphml",         // 5 nodes
+	"Netrail.graphml",       // 7 nodes
+	"Getnet.graphml",        // 7 nodes
+}
+var NETWORK_ID string = NETWORK_IDS[1]
 
 func main() {
 	graphMLs, err := util.GetGraphMLs(DIR)
@@ -46,6 +54,21 @@ func main() {
 		log.Fatalln(err)
 	}
 
-	util.WriteToNewFile(OUTPUT_DIR, "output.txt", fmtNet)
-	log.Println("Done!")
+	err = util.WriteToNewFile(OUTPUT_DIR, "output.txt", fmtNet)
+	if err != nil {
+		log.Println("Failed to write output file!")
+		log.Printf("Error: %s\n", err.Error())
+		return
+	} else {
+		log.Println("Done generating text file!")
+	}
+
+	err = util.WriteToNewPdf(OUTPUT_DIR, "output", fmtNet)
+	if err != nil {
+		log.Println("Failed to write output file!")
+		log.Printf("Error: %s\n", err.Error())
+		return
+	} else {
+		log.Println("Done generating PDF!")
+	}
 }

@@ -97,10 +97,10 @@ func (f *LatexBigSwitchEncoder) Encode(n *convert.Network) (string, error) {
 	f.setSwIdToIndexMap(usedSwitches)
 
 	fmtSwitches := f.encodeSwitches(usedSwitches)
-	link := f.encodeLinkTerm(usedSwitches)
+	fmtControllers, usedControllers := f.encodeControllers(n.Controllers())
+	link := f.encodeLinkTerm(usedSwitches, usedControllers)
 
 	fmtBigSwitchTerm := f.encodeBigSwitchTerm(usedSwitches, n.GetSwitchesWithUpdates())
-	fmtControllers, usedControllers := f.encodeControllers(n.Controllers())
 	fmtSDNTerm := f.encodeSDNTerm(usedSwitches, usedControllers)
 
 	arrayBlockStr := link + fmtSwitches + fmtBigSwitchTerm + fmtControllers + fmtSDNTerm
@@ -144,7 +144,10 @@ func (f *LatexBigSwitchEncoder) encodeSwitches(
 		}
 
 		newSwName := f.encodeSwitchName(*sw, true)
-		fmtNewSw := f.encodeNetKATPolicies(newFlowTable.ToNetKATPolicies())
+		noLinksFt := newFlowTable.Filter(func(fr convert.FlowRule) bool {
+			return !fr.IsLink()
+		})
+		fmtNewSw := f.encodeNetKATPolicies(noLinksFt.ToNetKATPolicies())
 		if fmtNewSw != "" {
 			sb.WriteString(fmt.Sprintf("%s & %s & %s%s", newSwName, f.sym.DEF, fmtNewSw, DNEW_LN))
 		}
@@ -184,13 +187,23 @@ func (f *LatexBigSwitchEncoder) encodeNetKATPolicies(
 	return strings.Join(strs, orSep)
 }
 
-func (f *LatexBigSwitchEncoder) encodeLinkTerm(switches []*convert.Switch) string {
+func (f *LatexBigSwitchEncoder) encodeLinkTerm(
+	switches []*convert.Switch,
+	controllers []*convert.Controller,
+) string {
 	linksFt := convert.NewFlowTable()
+	isLinkPred := func(fr convert.FlowRule) bool {
+		return fr.IsLink()
+	}
+
 	for _, sw := range switches {
-		onlyLinksFt := sw.FlowTable().Filter(func(fr convert.FlowRule) bool {
-			return fr.IsLink()
-		})
-		linksFt.Extend(onlyLinksFt)
+		linksFt.Extend(sw.FlowTable().Filter(isLinkPred))
+	}
+
+	for _, c := range controllers {
+		for _, ft := range c.NewFlowTables() {
+			linksFt.Extend(ft.Filter(isLinkPred))
+		}
 	}
 
 	fmtLinks := f.encodeNetKATPolicies(linksFt.ToNetKATPolicies())

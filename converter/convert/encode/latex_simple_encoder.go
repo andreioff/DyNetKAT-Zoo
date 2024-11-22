@@ -59,17 +59,10 @@ func (f *LatexSimpleEncoder) ProactiveSwitch() bool {
 	return f.proactiveSwitch
 }
 
-func (f *LatexSimpleEncoder) Encode(n *convert.Network) (string, error) {
-	if n == nil {
-		return "", util.NewError(util.ErrNilArgument, "n")
-	}
-
-	fmtSwitches, nonEmptySwitches := f.encodeSwitches(n.Switches())
-	fmtControllers, usedControllers := f.encodeControllers(n.Controllers())
-	arrayBlockStr := fmtSwitches + fmtControllers + f.encodeSDNTerm(
-		nonEmptySwitches,
-		usedControllers,
-	)
+func (f *LatexSimpleEncoder) Encode(ei EncodingInfo) (string, error) {
+	fmtSwitches := f.encodeSwitches(ei)
+	fmtControllers := f.encodeControllers(ei)
+	arrayBlockStr := fmtSwitches + fmtControllers + f.encodeSDNTerm(ei)
 	pages := util.SliceContent(arrayBlockStr, LINES_PER_PAGE, NEW_LN)
 
 	var sb strings.Builder
@@ -85,47 +78,47 @@ func (f *LatexSimpleEncoder) Encode(n *convert.Network) (string, error) {
 	return sb.String(), nil
 }
 
-func (f *LatexSimpleEncoder) encodeSwitches(
-	switches []*convert.Switch,
-) (string, []*convert.Switch) {
-	nonEmptySwitches := []*convert.Switch{}
+func (f *LatexSimpleEncoder) encodeSwitches(ei EncodingInfo) string {
 	var sb strings.Builder
 
-	for _, sw := range switches {
-		c := sw.Controller()
-		newFlowTable, willReceiveUpdate := convert.NewFlowTable(), false
-		if c != nil {
-			newFlowTable, willReceiveUpdate = c.NewFlowTables()[sw.TopoNode().ID()]
-		}
+	for swId, ft := range ei.usedSwitchFTs {
+		newFT, willReceiveUpdate := ei.FindNewFT(swId)
 
-		swStr := f.encodeSwitch(*sw, willReceiveUpdate)
+		swStr := f.encodeSwitch(ei.nodeIdToIndex[swId], ft, willReceiveUpdate)
 		if swStr != "" {
 			sb.WriteString(swStr)
 			sb.WriteString(NEW_LN)
-			nonEmptySwitches = append(nonEmptySwitches, sw)
 		}
 
-		if !willReceiveUpdate {
-			continue
+		if willReceiveUpdate {
+			updateSwStr := f.encodeSwitchNewFT(ei.nodeIdToIndex[swId], newFT)
+			sb.WriteString(updateSwStr)
+			sb.WriteString(NEW_LN)
 		}
 
-		// TODO This can be merged in the encodeSwitch function
-		newSwName := f.encodeSwitchName(*sw, true)
-		updatedSwStrs := f.encodeNetKATPolicies(newFlowTable.ToNetKATPolicies(), newSwName)
-		if len(updatedSwStrs) != 0 {
-			fmtNewSw := f.joinNonDetThridColumn(updatedSwStrs)
-			sb.WriteString(fmt.Sprintf("%s & %s & %s", newSwName, f.sym.DEF, fmtNewSw))
-			sb.WriteString(NEW_LN + NEW_LN)
-		}
 	}
 
-	return sb.String(), nonEmptySwitches
+	return sb.String()
 }
 
-func (f *LatexSimpleEncoder) encodeSwitch(sw convert.Switch, canBeEmpty bool) string {
-	swName := f.encodeSwitchName(sw, false)
+func (f *LatexSimpleEncoder) encodeSwitchNewFT(swIndex int, newFT *convert.FlowTable) string {
+	newSwName := f.encodeSwitchName(swIndex, true)
+	updatedSwStrs := f.encodeNetKATPolicies(newFT.ToNetKATPolicies(), newSwName)
+	if len(updatedSwStrs) == 0 {
+		return fmt.Sprintf("%s & %s & %s%s", newSwName, f.sym.DEF, f.sym.BOT, NEW_LN)
+	}
+	fmtNewSw := f.joinNonDetThridColumn(updatedSwStrs)
+	return fmt.Sprintf("%s & %s & %s%s", newSwName, f.sym.DEF, fmtNewSw, NEW_LN)
+}
 
-	fmtFlowRules := f.encodeNetKATPolicies(sw.FlowTable().ToNetKATPolicies(), swName)
+func (f *LatexSimpleEncoder) encodeSwitch(
+	swIndex int,
+	ft *convert.FlowTable,
+	canBeEmpty bool,
+) string {
+	swName := f.encodeSwitchName(swIndex, false)
+
+	fmtFlowRules := f.encodeNetKATPolicies(ft.ToNetKATPolicies(), swName)
 
 	if len(fmtFlowRules) == 0 {
 		if !canBeEmpty {
@@ -135,7 +128,7 @@ func (f *LatexSimpleEncoder) encodeSwitch(sw convert.Switch, canBeEmpty bool) st
 		fmtFlowRules = append(fmtFlowRules, dropAllStr)
 	}
 
-	commStr := f.encodeCommunication(f.encodeSwitchName(sw, true), sw.TopoNode().ID(), false)
+	commStr := f.encodeCommunication(f.encodeSwitchName(swIndex, true), swIndex, false)
 	fmtFlowRules = append(fmtFlowRules, commStr)
 
 	fmtSw := f.joinNonDetThridColumn(fmtFlowRules)
@@ -160,7 +153,7 @@ func (f *LatexSimpleEncoder) encodeNetKATPolicies(
 
 func (f *LatexSimpleEncoder) encodeCommunication(
 	termName string,
-	channelId int64,
+	channelId int,
 	fromSwitch bool,
 ) string {
 	upCommSym := f.sym.SEND
@@ -194,24 +187,24 @@ func (f *LatexSimpleEncoder) encodeCommunication(
 	)
 }
 
-func (f *LatexSimpleEncoder) encodeSDNTerm(sws []*convert.Switch, c []*convert.Controller) string {
+func (f *LatexSimpleEncoder) encodeSDNTerm(ei EncodingInfo) string {
 	var sb strings.Builder
 
 	prefix := ""
-	for _, sw := range sws {
-		sb.WriteString(prefix + f.encodeSwitchName(*sw, false))
+	for swId := range ei.usedSwitchFTs {
+		sb.WriteString(prefix + f.encodeSwitchName(ei.nodeIdToIndex[swId], false))
 		prefix = f.sym.PAR
 	}
 
-	for _, c := range c {
-		sb.WriteString(prefix + fmt.Sprintf("%s%d", CONTROLLER_BASE_NAME, c.ID()))
+	for i := range ei.usedContFTs {
+		sb.WriteString(prefix + fmt.Sprintf("%s%d", CONTROLLER_BASE_NAME, i))
 	}
 	content := util.BreakColumn(sb.String(), THIRD_COL_MAX_LEN, NEW_LN+"& & ")
 	return fmt.Sprintf("SDN & %s & %s", f.sym.DEF, content)
 }
 
-func (f *LatexSimpleEncoder) encodeSwitchName(sw convert.Switch, isNew bool) string {
-	name := fmt.Sprintf("%s%d", SW_BASE_NAME, sw.TopoNode().ID())
+func (f *LatexSimpleEncoder) encodeSwitchName(swIndex int, isNew bool) string {
+	name := fmt.Sprintf("%s%d", SW_BASE_NAME, swIndex)
 	if isNew {
 		return name + "'"
 	}
@@ -219,34 +212,26 @@ func (f *LatexSimpleEncoder) encodeSwitchName(sw convert.Switch, isNew bool) str
 }
 
 func (f *LatexSimpleEncoder) encodeControllers(
-	controllers []*convert.Controller,
-) (string, []*convert.Controller) {
-	usedControllers := []*convert.Controller{}
+	ei EncodingInfo,
+) string {
 	var sb strings.Builder
 
-	for _, c := range controllers {
-		cStr := f.encodeController(c)
-		if cStr != "" {
-			sb.WriteString(cStr)
-			sb.WriteString(NEW_LN)
-			usedControllers = append(usedControllers, c)
-		}
+	for i := range ei.usedContFTs {
+		cStr := f.encodeController(ei, i)
+		sb.WriteString(cStr)
+		sb.WriteString(NEW_LN)
 	}
 
-	return sb.String(), usedControllers
+	return sb.String()
 }
 
-func (f *LatexSimpleEncoder) encodeController(c *convert.Controller) string {
+func (f *LatexSimpleEncoder) encodeController(ei EncodingInfo, cIndex int) string {
 	fmtCommStrs := []string{}
-	cName := fmt.Sprintf("%s%d", CONTROLLER_BASE_NAME, c.ID())
+	cName := fmt.Sprintf("%s%d", CONTROLLER_BASE_NAME, cIndex)
 
-	for key := range c.NewFlowTables() {
-		commStr := f.encodeCommunication(cName, key, false)
+	for swId := range ei.usedContFTs[cIndex] {
+		commStr := f.encodeCommunication(cName, ei.nodeIdToIndex[swId], false)
 		fmtCommStrs = append(fmtCommStrs, commStr)
-	}
-
-	if len(c.NewFlowTables()) == 0 {
-		return ""
 	}
 
 	fmtC := f.joinNonDetThridColumn(fmtCommStrs)

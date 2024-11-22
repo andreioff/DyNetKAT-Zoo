@@ -2,6 +2,7 @@ package util
 
 import (
 	"bytes"
+	"embed"
 	"log"
 	"os"
 	"os/exec"
@@ -15,10 +16,16 @@ const (
 	DEFAULT_DOC_TMPL = "default_doc.tmpl"
 )
 
+// Ensure the util/templates folder is embedded into the final binary
+//
+//go:embed templates
+var tmplsFS embed.FS
+
 var tmpls *template.Template
 
+// load templates
 func init() {
-	templates, err := template.New(DEFAULT_DOC_TMPL).ParseGlob("./templates/*.tmpl")
+	templates, err := template.New(DEFAULT_DOC_TMPL).ParseFS(tmplsFS, "templates/*.tmpl")
 	if err != nil {
 		log.Panicf("Failed to load templates!\n%s\n", err.Error())
 	}
@@ -90,21 +97,8 @@ func WriteToNewPdf(dir, name, content string) error {
 	if err != nil {
 		return err
 	}
-	// required by pdflatex
-	withTmpl = "\"" + withTmpl + "\""
 
-	errOut := bytes.NewBuffer([]byte{})
-	cmd := exec.Command(PDFLATEX_COMMAND, JOBNAME_ARG, name)
-	cmd.Dir = dir
-	cmd.Stdin = bytes.NewBuffer([]byte(withTmpl))
-	cmd.Stderr = errOut
-
-	runErr := cmd.Run()
-	if runErr != nil {
-		return NewError("%s\n%s\n", runErr.Error(), errOut.String())
-	}
-
-	return nil
+	return runPdfLatex(dir, name, withTmpl)
 }
 
 func applyDefaultDocTemplate(content string) (string, error) {
@@ -115,4 +109,22 @@ func applyDefaultDocTemplate(content string) (string, error) {
 	}
 
 	return newContent.String(), nil
+}
+
+func runPdfLatex(dir, name, content string) error {
+	// required by pdflatex
+	content = "\"" + content + "\""
+
+	errOut := bytes.NewBuffer([]byte{})
+	cmd := exec.Command(PDFLATEX_COMMAND, JOBNAME_ARG, name)
+	cmd.Dir = dir
+	cmd.Stdin = bytes.NewBuffer([]byte(content))
+	cmd.Stderr = errOut
+
+	runErr := cmd.Run()
+	if runErr != nil {
+		return NewError("%s\n%s\n", runErr.Error(), errOut.String())
+	}
+
+	return nil
 }

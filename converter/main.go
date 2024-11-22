@@ -48,8 +48,13 @@ func main() {
 		log.Fatalln(err)
 	}
 
+	ei, err := encode.NewEncodingInfo(network)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
 	encoder := encode.NewLatexBigSwitchEncoder(false)
-	fmtNet, err := encoder.Encode(network)
+	fmtNet, err := encoder.Encode(ei)
 	if err != nil {
 		log.Fatalln(err)
 	}

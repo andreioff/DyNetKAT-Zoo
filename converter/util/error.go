@@ -30,4 +30,5 @@ const (
 	ErrOnlyIncidentLinksForSwitch  = "Switch must receive only links that are connected to it!"
 	ErrNilInArray                  = "Found nil elements in array '%s'"
 	ErrEmptyStringVar              = "Empty string variable '%s'!"
+	ErrNoSwsOrContsUsed            = "No switches or controllers used!"
 )

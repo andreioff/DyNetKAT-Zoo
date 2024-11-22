@@ -26,7 +26,6 @@ const (
 type LatexBigSwitchEncoder struct {
 	sym             SymbolEncoding
 	proactiveSwitch bool
-	swIdToIndex     map[int64]int
 }
 
 func NewLatexBigSwitchEncoder(proactiveSwitch bool) LatexBigSwitchEncoder {
@@ -50,7 +49,6 @@ func NewLatexBigSwitchEncoder(proactiveSwitch bool) LatexBigSwitchEncoder {
 			NONDET: "\\, \\oplus\\,",
 		},
 		proactiveSwitch: proactiveSwitch,
-		swIdToIndex:     make(map[int64]int), // TODO Not ideal
 	}
 }
 
@@ -62,46 +60,13 @@ func (f *LatexBigSwitchEncoder) ProactiveSwitch() bool {
 	return f.proactiveSwitch
 }
 
-func (f *LatexBigSwitchEncoder) setSwIdToIndexMap(usedSwitches []*convert.Switch) {
-	newMap := make(map[int64]int)
-	for i, sw := range usedSwitches {
-		newMap[sw.TopoNode().ID()] = i + 1
-	}
-	f.swIdToIndex = newMap
-}
+func (f *LatexBigSwitchEncoder) Encode(ei EncodingInfo) (string, error) {
+	fmtSwitches := f.encodeSwitches(ei)
+	fmtControllers := f.encodeControllers(ei)
+	link := f.encodeLinkTerm(ei)
 
-func getUsedSwitches(switches []*convert.Switch) []*convert.Switch {
-	usedSwitches := []*convert.Switch{}
-
-	for _, sw := range switches {
-		c := sw.Controller()
-		willReceiveUpdate := false
-		if c != nil {
-			_, willReceiveUpdate = c.NewFlowTables()[sw.TopoNode().ID()]
-		}
-
-		if len(sw.FlowTable().Entries()) > 0 || willReceiveUpdate {
-			usedSwitches = append(usedSwitches, sw)
-		}
-	}
-
-	return usedSwitches
-}
-
-func (f *LatexBigSwitchEncoder) Encode(n *convert.Network) (string, error) {
-	if n == nil {
-		return "", util.NewError(util.ErrNilArgument, "n")
-	}
-
-	usedSwitches := getUsedSwitches(n.Switches())
-	f.setSwIdToIndexMap(usedSwitches)
-
-	fmtSwitches := f.encodeSwitches(usedSwitches)
-	fmtControllers, usedControllers := f.encodeControllers(n.Controllers())
-	link := f.encodeLinkTerm(usedSwitches, usedControllers)
-
-	fmtBigSwitchTerm := f.encodeBigSwitchTerm(usedSwitches, n.GetSwitchesWithUpdates())
-	fmtSDNTerm := f.encodeSDNTerm(usedSwitches, usedControllers)
+	fmtBigSwitchTerm := f.encodeBigSwitchTerm(ei)
+	fmtSDNTerm := f.encodeSDNTerm(ei)
 
 	arrayBlockStr := link + fmtSwitches + fmtBigSwitchTerm + fmtControllers + fmtSDNTerm
 	pages := util.SliceContent(arrayBlockStr, LINES_PER_PAGE, NEW_LN)
@@ -120,31 +85,24 @@ func (f *LatexBigSwitchEncoder) Encode(n *convert.Network) (string, error) {
 }
 
 func (f *LatexBigSwitchEncoder) encodeSwitches(
-	switches []*convert.Switch,
+	ei EncodingInfo,
 ) string {
-	usedSwitches := []*convert.Switch{}
 	var sb strings.Builder
 
-	for _, sw := range switches {
-		c := sw.Controller()
-		newFlowTable, willReceiveUpdate := convert.NewFlowTable(), false
-		if c != nil {
-			newFlowTable, willReceiveUpdate = c.NewFlowTables()[sw.TopoNode().ID()]
-		}
+	for swId, ft := range ei.usedSwitchFTs {
+		newFt, willReceiveUpdate := ei.FindNewFT(swId)
 
-		swStr := f.encodeSwitch(*sw, willReceiveUpdate)
-		if swStr != "" {
-			sb.WriteString(swStr)
-			sb.WriteString(NEW_LN)
-			usedSwitches = append(usedSwitches, sw)
-		}
+		swIndex := ei.nodeIdToIndex[swId]
+		swStr := f.encodeSwitch(swIndex, ft, willReceiveUpdate)
+		sb.WriteString(swStr)
+		sb.WriteString(NEW_LN)
 
 		if !willReceiveUpdate {
 			continue
 		}
 
-		newSwName := f.encodeSwitchName(*sw, true)
-		noLinksFt := newFlowTable.Filter(func(fr convert.FlowRule) bool {
+		newSwName := f.encodeSwitchName(swIndex, true)
+		noLinksFt := newFt.Filter(func(fr convert.FlowRule) bool {
 			return !fr.IsLink()
 		})
 		fmtNewSw := f.encodeNetKATPolicies(noLinksFt.ToNetKATPolicies())
@@ -156,10 +114,14 @@ func (f *LatexBigSwitchEncoder) encodeSwitches(
 	return sb.String()
 }
 
-func (f *LatexBigSwitchEncoder) encodeSwitch(sw convert.Switch, canBeEmpty bool) string {
-	swName := f.encodeSwitchName(sw, false)
+func (f *LatexBigSwitchEncoder) encodeSwitch(
+	swIndex int,
+	ft *convert.FlowTable,
+	canBeEmpty bool,
+) string {
+	swName := f.encodeSwitchName(swIndex, false)
 
-	onlyNonLinkFt := sw.FlowTable().Filter(func(fr convert.FlowRule) bool {
+	onlyNonLinkFt := ft.Filter(func(fr convert.FlowRule) bool {
 		return !fr.IsLink()
 	})
 	fmtFlowRules := f.encodeNetKATPolicies(onlyNonLinkFt.ToNetKATPolicies())
@@ -187,21 +149,18 @@ func (f *LatexBigSwitchEncoder) encodeNetKATPolicies(
 	return strings.Join(strs, orSep)
 }
 
-func (f *LatexBigSwitchEncoder) encodeLinkTerm(
-	switches []*convert.Switch,
-	controllers []*convert.Controller,
-) string {
+func (f *LatexBigSwitchEncoder) encodeLinkTerm(ei EncodingInfo) string {
 	linksFt := convert.NewFlowTable()
 	isLinkPred := func(fr convert.FlowRule) bool {
 		return fr.IsLink()
 	}
 
-	for _, sw := range switches {
-		linksFt.Extend(sw.FlowTable().Filter(isLinkPred))
+	for _, ft := range ei.usedSwitchFTs {
+		linksFt.Extend(ft.Filter(isLinkPred))
 	}
 
-	for _, c := range controllers {
-		for _, ft := range c.NewFlowTables() {
+	for _, c := range ei.usedContFTs {
+		for _, ft := range c {
 			linksFt.Extend(ft.Filter(isLinkPred))
 		}
 	}
@@ -218,25 +177,15 @@ func (f *LatexBigSwitchEncoder) encodeLinkTerm(
 }
 
 func (f *LatexBigSwitchEncoder) encodeBigSwitchTerm(
-	switches []*convert.Switch,
-	switchesWithUpdates []*convert.Switch,
+	ei EncodingInfo,
 ) string {
-	n := len(switches)
-	if n == 0 {
-		return ""
-	}
+	n := len(ei.usedSwitchFTs)
 
 	bigSwitchName := f.encodeBigSwitchName(VAR_BASE_NAME, n, -1, "")
 	packetProcPolicy := f.encodePacketProcPolicy(n, bigSwitchName)
 	fmtBigSw := []string{packetProcPolicy}
-	fmtBigSw = append(fmtBigSw, f.encodeSwitchPolicyComm(n, switchesWithUpdates)...)
-	// TODO This should be encoded separately considering the f.proactiveSwitch flag
-	fmtBigSw = append(fmtBigSw, fmt.Sprintf("%s%s%s %s %s%s%s %s %s%s",
-		PACKET_IN_CHANNEL, f.sym.SEND, f.sym.ONE,
-		f.sym.SEQ, PACKET_OUT_CHANNEL, f.sym.RECV, f.sym.ONE,
-		f.sym.SEQ, f.encodeBigSwitchName(VAR_BASE_NAME, n, -1, ""),
-		NEW_LN,
-	))
+	fmtBigSw = append(fmtBigSw, f.encodeSwitchPolicyComm(ei)...)
+	fmtBigSw = append(fmtBigSw, f.getPassivePiPoComm(true, bigSwitchName))
 
 	return fmt.Sprintf(
 		"%s & %s & %s%s",
@@ -332,17 +281,17 @@ func (f *LatexBigSwitchEncoder) encodePacketProcPolicy(n int, bigSwitchName stri
 }
 
 func (f *LatexBigSwitchEncoder) encodeSwitchPolicyComm(
-	n int,
-	switches []*convert.Switch,
+	ei EncodingInfo,
 ) []string {
 	commStrs := []string{}
-	for _, sw := range switches {
-		swIndex, exists := f.swIdToIndex[sw.TopoNode().ID()]
+	for swId := range ei.usedSwitchFTs {
+		_, exists := ei.FindNewFT(swId)
 		if !exists {
-			panic("This should not happen")
+			continue
 		}
 
-		newSwName := f.encodeSwitchName(*sw, true)
+		swIndex := ei.nodeIdToIndex[swId]
+		newSwName := f.encodeSwitchName(swIndex, true)
 		commStr := fmt.Sprintf(
 			"%s%d %s %s %s %s",
 			UP_CHANNEL_NAME,
@@ -350,7 +299,7 @@ func (f *LatexBigSwitchEncoder) encodeSwitchPolicyComm(
 			f.sym.RECV,
 			newSwName,
 			f.sym.SEQ,
-			f.encodeBigSwitchName(VAR_BASE_NAME, n, swIndex, newSwName),
+			f.encodeBigSwitchName(VAR_BASE_NAME, len(ei.usedSwitchFTs), swIndex, newSwName),
 		)
 
 		commStrs = append(commStrs, commStr)
@@ -361,14 +310,9 @@ func (f *LatexBigSwitchEncoder) encodeSwitchPolicyComm(
 
 func (f *LatexBigSwitchEncoder) encodeControllerPolicyComm(
 	cName string,
-	sw *convert.Switch,
+	swIndex int,
 ) string {
-	swIndex, exists := f.swIdToIndex[sw.TopoNode().ID()]
-	if !exists {
-		panic("This should not happen")
-	}
-
-	newSwName := f.encodeSwitchName(*sw, true)
+	newSwName := f.encodeSwitchName(swIndex, true)
 	return fmt.Sprintf(
 		"%s%d %s %s %s %s",
 		UP_CHANNEL_NAME,
@@ -381,15 +325,14 @@ func (f *LatexBigSwitchEncoder) encodeControllerPolicyComm(
 }
 
 func (f *LatexBigSwitchEncoder) encodeSDNTerm(
-	sws []*convert.Switch,
-	c []*convert.Controller,
+	ei EncodingInfo,
 ) string {
 	var sb strings.Builder
 
-	sb.WriteString(f.encodeBigSwitchName(SW_BASE_NAME, len(sws), -1, ""))
+	sb.WriteString(f.encodeBigSwitchName(SW_BASE_NAME, len(ei.usedSwitchFTs), -1, ""))
 
-	for _, c := range c {
-		sb.WriteString(fmt.Sprintf("%s %s%d", f.sym.PAR, CONTROLLER_BASE_NAME, c.ID()))
+	for i := range ei.usedContFTs {
+		sb.WriteString(fmt.Sprintf("%s %s%d", f.sym.PAR, CONTROLLER_BASE_NAME, i))
 	}
 
 	return fmt.Sprintf(
@@ -399,12 +342,7 @@ func (f *LatexBigSwitchEncoder) encodeSDNTerm(
 	)
 }
 
-func (f *LatexBigSwitchEncoder) encodeSwitchName(sw convert.Switch, isNew bool) string {
-	swIndex, exists := f.swIdToIndex[sw.TopoNode().ID()]
-	if !exists {
-		panic("This should not happen!")
-	}
-
+func (f *LatexBigSwitchEncoder) encodeSwitchName(swIndex int, isNew bool) string {
 	name := fmt.Sprintf("%s%d", SW_BASE_NAME, swIndex)
 	if isNew {
 		return "new" + name
@@ -412,48 +350,52 @@ func (f *LatexBigSwitchEncoder) encodeSwitchName(sw convert.Switch, isNew bool) 
 	return name
 }
 
-func (f *LatexBigSwitchEncoder) encodeControllers(
-	controllers []*convert.Controller,
-) (string, []*convert.Controller) {
-	usedControllers := []*convert.Controller{}
+func (f *LatexBigSwitchEncoder) encodeControllers(ei EncodingInfo) string {
 	var sb strings.Builder
 
-	for _, c := range controllers {
-		cStr := f.encodeController(c)
-		if cStr != "" {
-			sb.WriteString(cStr)
-			sb.WriteString(NEW_LN)
-			usedControllers = append(usedControllers, c)
-		}
+	for i := range ei.usedContFTs {
+		cStr := f.encodeController(ei, i)
+		sb.WriteString(cStr)
+		sb.WriteString(NEW_LN)
 	}
 
-	return sb.String(), usedControllers
+	return sb.String()
 }
 
-func (f *LatexBigSwitchEncoder) encodeController(c *convert.Controller) string {
+func (f *LatexBigSwitchEncoder) encodeController(
+	ei EncodingInfo,
+	cIndex int,
+) string {
 	fmtCommStrs := []string{}
-	cName := fmt.Sprintf("%s%d", CONTROLLER_BASE_NAME, c.ID())
+	cName := fmt.Sprintf("%s%d", CONTROLLER_BASE_NAME, cIndex)
 
-	for swId := range c.NewFlowTables() {
-		sw := c.FindSwitch(swId)
-
-		commStr := f.encodeControllerPolicyComm(cName, sw)
+	for swId := range ei.usedContFTs[cIndex] {
+		commStr := f.encodeControllerPolicyComm(cName, ei.nodeIdToIndex[swId])
 		fmtCommStrs = append(fmtCommStrs, commStr)
 	}
 
-	if len(c.NewFlowTables()) == 0 {
-		return ""
-	}
-
-	// TODO Can be merged with the one from the switch
-	fmtCommStrs = append(fmtCommStrs, fmt.Sprintf("%s%s%s %s %s%s%s %s %s",
-		PACKET_IN_CHANNEL, f.sym.RECV, f.sym.ONE,
-		f.sym.SEQ, PACKET_OUT_CHANNEL, f.sym.SEND, f.sym.ONE,
-		f.sym.SEQ, cName,
-	))
+	fmtCommStrs = append(fmtCommStrs, f.getPassivePiPoComm(false, cName))
 
 	fmtC := f.joinNonDetThridColumn(fmtCommStrs)
 	return fmt.Sprintf("%s & %s & %s%s", cName, f.sym.DEF, fmtC, NEW_LN)
+}
+
+func (f *LatexBigSwitchEncoder) getPassivePiPoComm(
+	forSwitch bool,
+	termName string,
+) string {
+	// TODO This should also be encoded separately considering the f.proactiveSwitch flag
+	commSym := f.sym.RECV
+	if forSwitch {
+		commSym = f.sym.SEND
+	}
+
+	return fmt.Sprintf("%s%s%s %s %s%s%s %s %s%s",
+		PACKET_IN_CHANNEL, commSym, f.sym.ONE,
+		f.sym.SEQ, PACKET_OUT_CHANNEL, f.sym.RECV, f.sym.ONE,
+		f.sym.SEQ, termName,
+		NEW_LN,
+	)
 }
 
 func (f *LatexBigSwitchEncoder) joinNonDetThridColumn(strs []string) string {

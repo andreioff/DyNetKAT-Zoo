@@ -11,7 +11,7 @@ import (
 const (
 	LINK_TERM_NAME       = "L"
 	PACKET_IN_CHANNEL    = "pi"
-	PACKET_OUT_CHANNEL   = "pi"
+	PACKET_OUT_CHANNEL   = "po"
 	FLOW_MOD_SET_NAME    = "FM"
 	BIG_SWITCH_BASE_NAME = "SDN"
 	VAR_BASE_NAME        = "X"
@@ -135,7 +135,12 @@ func (f LatexBigSwitchEncoder) encodeBigSwitchTerm(
 	packetProcPolicy := f.encodePacketProcPolicy(n, bigSwitchName)
 	fmtBigSw := []string{packetProcPolicy}
 	fmtBigSw = append(fmtBigSw, f.encodeSwitchPolicyComm(ei)...)
-	fmtBigSw = append(fmtBigSw, f.getPassivePiPoComm(true, bigSwitchName))
+
+	if f.proactiveSwitch {
+		fmtBigSw = append(fmtBigSw, f.getActivePiPoComm(ei, true, "")...)
+	} else {
+		fmtBigSw = append(fmtBigSw, f.getPassivePiPoComm(true, bigSwitchName))
+	}
 
 	return fmt.Sprintf(
 		"%s & %s & %s%s",
@@ -312,7 +317,11 @@ func (f LatexBigSwitchEncoder) encodeController(
 		fmtCommStrs = append(fmtCommStrs, commStr)
 	}
 
-	fmtCommStrs = append(fmtCommStrs, f.getPassivePiPoComm(false, cName))
+	if f.proactiveSwitch {
+		fmtCommStrs = append(fmtCommStrs, f.getActivePiPoComm(ei, false, cName)...)
+	} else {
+		fmtCommStrs = append(fmtCommStrs, f.getPassivePiPoComm(false, cName))
+	}
 
 	fmtC := f.joinNonDetThridColumn(fmtCommStrs)
 	return fmt.Sprintf("%s & %s & %s%s", cName, f.sym.DEF, fmtC, NEW_LN)
@@ -322,18 +331,70 @@ func (f LatexBigSwitchEncoder) getPassivePiPoComm(
 	forSwitch bool,
 	termName string,
 ) string {
-	// TODO This should also be encoded separately considering the f.proactiveSwitch flag
-	commSym := f.sym.RECV
+	commSym1 := f.sym.RECV
+	commSym2 := f.sym.SEND
 	if forSwitch {
-		commSym = f.sym.SEND
+		commSym1 = f.sym.SEND
+		commSym2 = f.sym.RECV
 	}
 
 	return fmt.Sprintf("%s%s%s %s %s%s%s %s %s%s",
-		PACKET_IN_CHANNEL, commSym, f.sym.ONE,
-		f.sym.SEQ, PACKET_OUT_CHANNEL, f.sym.RECV, f.sym.ONE,
+		PACKET_IN_CHANNEL, commSym1, f.sym.ONE,
+		f.sym.SEQ, PACKET_OUT_CHANNEL, commSym2, f.sym.ONE,
 		f.sym.SEQ, termName,
 		NEW_LN,
 	)
+}
+
+func (f LatexBigSwitchEncoder) getActivePiPoComm(
+	ei EncodingInfo,
+	forSwitch bool,
+	termName string,
+) []string {
+	commSym1 := f.sym.RECV
+	commSym2 := f.sym.SEND
+	if forSwitch {
+		commSym1 = f.sym.SEND
+		commSym2 = f.sym.RECV
+	}
+
+	commStrs := []string{}
+	for swId := range ei.usedSwitchFTs {
+		_, exists := ei.FindNewFT(swId)
+		if !exists {
+			continue
+		}
+
+		swIndex := ei.nodeIdToIndex[swId]
+		newSwName := f.encodeSwitchName(swIndex, true)
+		if forSwitch {
+			termName = f.encodeBigSwitchName(
+				VAR_BASE_NAME,
+				len(ei.usedSwitchFTs),
+				swIndex,
+				newSwName,
+			)
+		}
+
+		commStr := fmt.Sprintf(
+			"%s%d %s %s %s %s%d %s %s %s %s",
+			PACKET_IN_CHANNEL,
+			swIndex,
+			commSym1,
+			f.sym.ONE,
+			f.sym.SEQ,
+			PACKET_OUT_CHANNEL,
+			swIndex,
+			commSym2,
+			newSwName,
+			f.sym.SEQ,
+			termName,
+		)
+
+		commStrs = append(commStrs, commStr)
+	}
+
+	return commStrs
 }
 
 func (f LatexBigSwitchEncoder) joinNonDetThridColumn(strs []string) string {

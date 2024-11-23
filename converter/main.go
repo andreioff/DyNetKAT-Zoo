@@ -53,6 +53,7 @@ func main() {
 		log.Fatalln(err)
 	}
 
+	// encoder := getEncoder("big-switch-proactive")
 	encoder := getEncoder("big-switch")
 	fmtNet := encoder.Encode(ei)
 
@@ -77,8 +78,12 @@ func main() {
 
 func getEncoder(encoderOption string) encode.NetworkEncoder {
 	switch encoderOption {
+	case "big-switch-proactive":
+		return encode.NewLatexBigSwitchEncoder(true)
 	case "big-switch":
 		return encode.NewLatexBigSwitchEncoder(false)
+	case "simple-proactive":
+		return encode.NewLatexSimpleEncoder(true)
 	case "simple":
 		return encode.NewLatexSimpleEncoder(false)
 	default:

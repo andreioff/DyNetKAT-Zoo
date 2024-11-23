@@ -27,81 +27,23 @@ type LatexSimpleEncoder struct {
 	proactiveSwitch bool
 }
 
-func NewLatexSimpleEncoder(proactiveSwitch bool) LatexSimpleEncoder {
-	return LatexSimpleEncoder{
-		sym: SymbolEncoding{
-			ONE:    "1",
-			ZERO:   "0",
-			EQ:     "=",
-			OR:     "+",
-			AND:    "\\cdot",
-			NEG:    "\\neg",
-			STAR:   "*",
-			ASSIGN: "\\leftarrow",
-
-			BOT:    "\\bot",
-			SEQ:    "\\, ;\\, ",
-			RECV:   "\\, ?\\, ",
-			SEND:   "\\, !\\, ",
-			PAR:    "\\, \\|\\, ",
-			DEF:    "\\triangleq",
-			NONDET: "\\, \\oplus\\,",
-		},
-		proactiveSwitch: proactiveSwitch,
-	}
+func NewLatexSimpleEncoder(proactiveSwitch bool) NetworkEncoder {
+	return NewLatexEncoder(proactiveSwitch, LatexSimpleEncoder{sym: LATEX_SYMBOLS})
 }
 
-func (f *LatexSimpleEncoder) SymbolEncodings() SymbolEncoding {
+func (f LatexSimpleEncoder) SymbolEncoding() SymbolEncoding {
 	return f.sym
 }
 
-func (f *LatexSimpleEncoder) ProactiveSwitch() bool {
+func (f LatexSimpleEncoder) ProactiveSwitch() bool {
 	return f.proactiveSwitch
 }
 
-func (f *LatexSimpleEncoder) Encode(ei EncodingInfo) (string, error) {
-	fmtSwitches := f.encodeSwitches(ei)
-	fmtControllers := f.encodeControllers(ei)
-	arrayBlockStr := fmtSwitches + fmtControllers + f.encodeSDNTerm(ei)
-	pages := util.SliceContent(arrayBlockStr, LINES_PER_PAGE, NEW_LN)
-
-	var sb strings.Builder
-	sep := ""
-	for _, page := range pages {
-		sb.WriteString(sep)
-		sb.WriteString(BEGIN_EQ_ARRAY)
-		sb.WriteString(page)
-		sb.WriteString(END_EQ_ARRAY)
-		sep = NEW_PAGE
-	}
-
-	return sb.String(), nil
+func (f LatexSimpleEncoder) encodeInformation(ei EncodingInfo) string {
+	return f.encodeSDNTerm(ei)
 }
 
-func (f *LatexSimpleEncoder) encodeSwitches(ei EncodingInfo) string {
-	var sb strings.Builder
-
-	for swId, ft := range ei.usedSwitchFTs {
-		newFT, willReceiveUpdate := ei.FindNewFT(swId)
-
-		swStr := f.encodeSwitch(ei.nodeIdToIndex[swId], ft, willReceiveUpdate)
-		if swStr != "" {
-			sb.WriteString(swStr)
-			sb.WriteString(NEW_LN)
-		}
-
-		if willReceiveUpdate {
-			updateSwStr := f.encodeSwitchNewFT(ei.nodeIdToIndex[swId], newFT)
-			sb.WriteString(updateSwStr)
-			sb.WriteString(NEW_LN)
-		}
-
-	}
-
-	return sb.String()
-}
-
-func (f *LatexSimpleEncoder) encodeSwitchNewFT(swIndex int, newFT *convert.FlowTable) string {
+func (f LatexSimpleEncoder) encodeSwitchNewFT(swIndex int, newFT *convert.FlowTable) string {
 	newSwName := f.encodeSwitchName(swIndex, true)
 	updatedSwStrs := f.encodeNetKATPolicies(newFT.ToNetKATPolicies(), newSwName)
 	if len(updatedSwStrs) == 0 {
@@ -111,7 +53,7 @@ func (f *LatexSimpleEncoder) encodeSwitchNewFT(swIndex int, newFT *convert.FlowT
 	return fmt.Sprintf("%s & %s & %s%s", newSwName, f.sym.DEF, fmtNewSw, NEW_LN)
 }
 
-func (f *LatexSimpleEncoder) encodeSwitch(
+func (f LatexSimpleEncoder) encodeSwitch(
 	swIndex int,
 	ft *convert.FlowTable,
 	canBeEmpty bool,
@@ -135,7 +77,7 @@ func (f *LatexSimpleEncoder) encodeSwitch(
 	return fmt.Sprintf("%s & %s & %s %s", swName, f.sym.DEF, fmtSw, NEW_LN)
 }
 
-func (f *LatexSimpleEncoder) encodeNetKATPolicies(
+func (f LatexSimpleEncoder) encodeNetKATPolicies(
 	policies []*convert.SimpleNetKATPolicy,
 	swName string,
 ) []string {
@@ -151,7 +93,7 @@ func (f *LatexSimpleEncoder) encodeNetKATPolicies(
 	return fmtFlowRules
 }
 
-func (f *LatexSimpleEncoder) encodeCommunication(
+func (f LatexSimpleEncoder) encodeCommunication(
 	termName string,
 	channelId int,
 	fromSwitch bool,
@@ -187,7 +129,7 @@ func (f *LatexSimpleEncoder) encodeCommunication(
 	)
 }
 
-func (f *LatexSimpleEncoder) encodeSDNTerm(ei EncodingInfo) string {
+func (f LatexSimpleEncoder) encodeSDNTerm(ei EncodingInfo) string {
 	var sb strings.Builder
 
 	prefix := ""
@@ -203,7 +145,7 @@ func (f *LatexSimpleEncoder) encodeSDNTerm(ei EncodingInfo) string {
 	return fmt.Sprintf("SDN & %s & %s", f.sym.DEF, content)
 }
 
-func (f *LatexSimpleEncoder) encodeSwitchName(swIndex int, isNew bool) string {
+func (f LatexSimpleEncoder) encodeSwitchName(swIndex int, isNew bool) string {
 	name := fmt.Sprintf("%s%d", SW_BASE_NAME, swIndex)
 	if isNew {
 		return name + "'"
@@ -211,21 +153,7 @@ func (f *LatexSimpleEncoder) encodeSwitchName(swIndex int, isNew bool) string {
 	return name
 }
 
-func (f *LatexSimpleEncoder) encodeControllers(
-	ei EncodingInfo,
-) string {
-	var sb strings.Builder
-
-	for i := range ei.usedContFTs {
-		cStr := f.encodeController(ei, i)
-		sb.WriteString(cStr)
-		sb.WriteString(NEW_LN)
-	}
-
-	return sb.String()
-}
-
-func (f *LatexSimpleEncoder) encodeController(ei EncodingInfo, cIndex int) string {
+func (f LatexSimpleEncoder) encodeController(ei EncodingInfo, cIndex int) string {
 	fmtCommStrs := []string{}
 	cName := fmt.Sprintf("%s%d", CONTROLLER_BASE_NAME, cIndex)
 
@@ -238,7 +166,7 @@ func (f *LatexSimpleEncoder) encodeController(ei EncodingInfo, cIndex int) strin
 	return fmt.Sprintf("%s & %s & %s %s", cName, f.sym.DEF, fmtC, NEW_LN)
 }
 
-func (f *LatexSimpleEncoder) joinNonDetThridColumn(strs []string) string {
+func (f LatexSimpleEncoder) joinNonDetThridColumn(strs []string) string {
 	// '& & ' are for placing the conent in the third column of the array env
 	nonDetSep := fmt.Sprintf(" %s %s& & ", f.sym.NONDET, NEW_LN)
 	return strings.Join(strs, nonDetSep)

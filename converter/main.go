@@ -53,11 +53,8 @@ func main() {
 		log.Fatalln(err)
 	}
 
-	encoder := encode.NewLatexBigSwitchEncoder(false)
-	fmtNet, err := encoder.Encode(ei)
-	if err != nil {
-		log.Fatalln(err)
-	}
+	encoder := getEncoder("big-switch")
+	fmtNet := encoder.Encode(ei)
 
 	err = util.WriteToNewFile(OUTPUT_DIR, "output.txt", fmtNet)
 	if err != nil {
@@ -75,5 +72,16 @@ func main() {
 		return
 	} else {
 		log.Println("Done generating PDF!")
+	}
+}
+
+func getEncoder(encoderOption string) encode.NetworkEncoder {
+	switch encoderOption {
+	case "big-switch":
+		return encode.NewLatexBigSwitchEncoder(false)
+	case "simple":
+		return encode.NewLatexSimpleEncoder(false)
+	default:
+		return encode.NewLatexBigSwitchEncoder(false)
 	}
 }

@@ -31,10 +31,12 @@ func getNodeIdToIndex(
 	usedSwitchFTs map[int64]*convert.FlowTable,
 ) map[int64]int {
 	nodeIdToIndex := make(map[int64]int)
-	for i, sw := range switches {
+	index := 0
+	for _, sw := range switches {
 		_, exists := usedSwitchFTs[sw.TopoNode().ID()]
 		if exists {
-			nodeIdToIndex[sw.TopoNode().ID()] = i
+			nodeIdToIndex[sw.TopoNode().ID()] = index
+			index++
 		}
 	}
 	return nodeIdToIndex

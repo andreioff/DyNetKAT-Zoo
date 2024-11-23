@@ -28,93 +28,31 @@ type LatexBigSwitchEncoder struct {
 	proactiveSwitch bool
 }
 
-func NewLatexBigSwitchEncoder(proactiveSwitch bool) LatexBigSwitchEncoder {
-	return LatexBigSwitchEncoder{
-		sym: SymbolEncoding{
-			ONE:    "1",
-			ZERO:   "0",
-			EQ:     "=",
-			OR:     "+",
-			AND:    "\\cdot",
-			NEG:    "\\neg",
-			STAR:   "*",
-			ASSIGN: "\\leftarrow",
-
-			BOT:    "\\bot",
-			SEQ:    "\\, ;\\, ",
-			RECV:   "\\, ?\\, ",
-			SEND:   "\\, !\\, ",
-			PAR:    "\\, \\|\\, ",
-			DEF:    "\\triangleq",
-			NONDET: "\\, \\oplus\\,",
-		},
+func NewLatexBigSwitchEncoder(proactiveSwitch bool) NetworkEncoder {
+	return NewLatexEncoder(proactiveSwitch, LatexBigSwitchEncoder{
+		sym:             LATEX_SYMBOLS,
 		proactiveSwitch: proactiveSwitch,
-	}
+	})
 }
 
-func (f *LatexBigSwitchEncoder) SymbolEncodings() SymbolEncoding {
+func (f LatexBigSwitchEncoder) SymbolEncoding() SymbolEncoding {
 	return f.sym
 }
 
-func (f *LatexBigSwitchEncoder) ProactiveSwitch() bool {
+func (f LatexBigSwitchEncoder) ProactiveSwitch() bool {
 	return f.proactiveSwitch
 }
 
-func (f *LatexBigSwitchEncoder) Encode(ei EncodingInfo) (string, error) {
-	fmtSwitches := f.encodeSwitches(ei)
-	fmtControllers := f.encodeControllers(ei)
+func (f LatexBigSwitchEncoder) encodeInformation(ei EncodingInfo) string {
 	link := f.encodeLinkTerm(ei)
 
 	fmtBigSwitchTerm := f.encodeBigSwitchTerm(ei)
 	fmtSDNTerm := f.encodeSDNTerm(ei)
 
-	arrayBlockStr := link + fmtSwitches + fmtBigSwitchTerm + fmtControllers + fmtSDNTerm
-	pages := util.SliceContent(arrayBlockStr, LINES_PER_PAGE, NEW_LN)
-
-	var sb strings.Builder
-	sep := ""
-	for _, page := range pages {
-		sb.WriteString(sep)
-		sb.WriteString(BEGIN_EQ_ARRAY)
-		sb.WriteString(page)
-		sb.WriteString(END_EQ_ARRAY)
-		sep = NEW_PAGE
-	}
-
-	return sb.String(), nil
+	return link + fmtBigSwitchTerm + fmtSDNTerm
 }
 
-func (f *LatexBigSwitchEncoder) encodeSwitches(
-	ei EncodingInfo,
-) string {
-	var sb strings.Builder
-
-	for swId, ft := range ei.usedSwitchFTs {
-		newFt, willReceiveUpdate := ei.FindNewFT(swId)
-
-		swIndex := ei.nodeIdToIndex[swId]
-		swStr := f.encodeSwitch(swIndex, ft, willReceiveUpdate)
-		sb.WriteString(swStr)
-		sb.WriteString(NEW_LN)
-
-		if !willReceiveUpdate {
-			continue
-		}
-
-		newSwName := f.encodeSwitchName(swIndex, true)
-		noLinksFt := newFt.Filter(func(fr convert.FlowRule) bool {
-			return !fr.IsLink()
-		})
-		fmtNewSw := f.encodeNetKATPolicies(noLinksFt.ToNetKATPolicies())
-		if fmtNewSw != "" {
-			sb.WriteString(fmt.Sprintf("%s & %s & %s%s", newSwName, f.sym.DEF, fmtNewSw, DNEW_LN))
-		}
-	}
-
-	return sb.String()
-}
-
-func (f *LatexBigSwitchEncoder) encodeSwitch(
+func (f LatexBigSwitchEncoder) encodeSwitch(
 	swIndex int,
 	ft *convert.FlowTable,
 	canBeEmpty bool,
@@ -136,7 +74,19 @@ func (f *LatexBigSwitchEncoder) encodeSwitch(
 	return fmt.Sprintf("%s & %s & %s %s", swName, f.sym.DEF, fmtFlowRules, NEW_LN)
 }
 
-func (f *LatexBigSwitchEncoder) encodeNetKATPolicies(
+func (f LatexBigSwitchEncoder) encodeSwitchNewFT(swIndex int, newFT *convert.FlowTable) string {
+	newSwName := f.encodeSwitchName(swIndex, true)
+	noLinksFt := newFT.Filter(func(fr convert.FlowRule) bool {
+		return !fr.IsLink()
+	})
+	updatedSwStrs := f.encodeNetKATPolicies(noLinksFt.ToNetKATPolicies())
+	if updatedSwStrs == "" {
+		updatedSwStrs = f.sym.BOT
+	}
+	return fmt.Sprintf("%s & %s & %s%s", newSwName, f.sym.DEF, updatedSwStrs, NEW_LN)
+}
+
+func (f LatexBigSwitchEncoder) encodeNetKATPolicies(
 	policies []*convert.SimpleNetKATPolicy,
 ) string {
 	strs := []string{}
@@ -149,7 +99,7 @@ func (f *LatexBigSwitchEncoder) encodeNetKATPolicies(
 	return strings.Join(strs, orSep)
 }
 
-func (f *LatexBigSwitchEncoder) encodeLinkTerm(ei EncodingInfo) string {
+func (f LatexBigSwitchEncoder) encodeLinkTerm(ei EncodingInfo) string {
 	linksFt := convert.NewFlowTable()
 	isLinkPred := func(fr convert.FlowRule) bool {
 		return fr.IsLink()
@@ -176,7 +126,7 @@ func (f *LatexBigSwitchEncoder) encodeLinkTerm(ei EncodingInfo) string {
 	)
 }
 
-func (f *LatexBigSwitchEncoder) encodeBigSwitchTerm(
+func (f LatexBigSwitchEncoder) encodeBigSwitchTerm(
 	ei EncodingInfo,
 ) string {
 	n := len(ei.usedSwitchFTs)
@@ -196,32 +146,32 @@ func (f *LatexBigSwitchEncoder) encodeBigSwitchTerm(
 	)
 }
 
-func (f *LatexBigSwitchEncoder) encodeBigSwitchName(
+func (f LatexBigSwitchEncoder) encodeBigSwitchName(
 	varName string,
 	n, index int,
 	termName string,
 ) string {
-	if n < 1 {
+	if n < 0 {
 		return BIG_SWITCH_BASE_NAME
 	}
 
-	if index < 1 || index > n {
+	if index < 0 || index > n-1 {
 		return fmt.Sprintf(
 			"%s_{%s}",
 			BIG_SWITCH_BASE_NAME,
-			f.encodeDottedSequence(1, n, varName),
+			f.encodeDottedSequence(0, n, varName),
 		)
 	}
 
 	commaBefore, commaAfter := COMMA_SYM, COMMA_SYM
-	if index == 1 {
+	if index == 0 {
 		commaBefore = ""
 	}
-	if index == n {
+	if index == n-1 {
 		commaAfter = ""
 	}
 
-	fmtVarSeq := f.encodeDottedSequence(1, index-1, varName) +
+	fmtVarSeq := f.encodeDottedSequence(0, index, varName) +
 		fmt.Sprintf("%s%s%s", commaBefore, termName, commaAfter) +
 		f.encodeDottedSequence(index+1, n, varName)
 
@@ -232,11 +182,11 @@ func (f *LatexBigSwitchEncoder) encodeBigSwitchName(
 	)
 }
 
-func (f *LatexBigSwitchEncoder) encodeDottedSequence(
+func (f LatexBigSwitchEncoder) encodeDottedSequence(
 	startIndex, endIndex int,
 	varName string,
 ) string {
-	n := endIndex - startIndex + 1
+	n := endIndex - startIndex
 	if n < 1 {
 		return ""
 	}
@@ -248,13 +198,13 @@ func (f *LatexBigSwitchEncoder) encodeDottedSequence(
 
 	fmtVars := fmt.Sprintf("%s%d", varName, startIndex)
 	if n > 1 {
-		fmtVars += fmt.Sprintf("%s %s %s%d", COMMA_SYM, dotsStr, varName, endIndex)
+		fmtVars += fmt.Sprintf("%s %s %s%d", COMMA_SYM, dotsStr, varName, endIndex-1)
 	}
 
 	return fmtVars
 }
 
-func (f *LatexBigSwitchEncoder) encodePacketProcPolicy(n int, bigSwitchName string) string {
+func (f LatexBigSwitchEncoder) encodePacketProcPolicy(n int, bigSwitchName string) string {
 	if n < 1 {
 		return fmt.Sprintf("%s^{%s} %s %s", LINK_TERM_NAME, f.sym.STAR, f.sym.SEQ, bigSwitchName)
 	}
@@ -264,9 +214,9 @@ func (f *LatexBigSwitchEncoder) encodePacketProcPolicy(n int, bigSwitchName stri
 		dotsStr = DOTS_SYM + f.sym.OR
 	}
 
-	concatVarsStr := VAR_BASE_NAME + "1"
+	concatVarsStr := VAR_BASE_NAME + "0"
 	if n > 1 {
-		concatVarsStr += fmt.Sprintf("%s %s %s%d", f.sym.OR, dotsStr, VAR_BASE_NAME, n)
+		concatVarsStr += fmt.Sprintf("%s %s %s%d", f.sym.OR, dotsStr, VAR_BASE_NAME, n-1)
 	}
 
 	return fmt.Sprintf(
@@ -280,7 +230,7 @@ func (f *LatexBigSwitchEncoder) encodePacketProcPolicy(n int, bigSwitchName stri
 	)
 }
 
-func (f *LatexBigSwitchEncoder) encodeSwitchPolicyComm(
+func (f LatexBigSwitchEncoder) encodeSwitchPolicyComm(
 	ei EncodingInfo,
 ) []string {
 	commStrs := []string{}
@@ -308,7 +258,7 @@ func (f *LatexBigSwitchEncoder) encodeSwitchPolicyComm(
 	return commStrs
 }
 
-func (f *LatexBigSwitchEncoder) encodeControllerPolicyComm(
+func (f LatexBigSwitchEncoder) encodeControllerPolicyComm(
 	cName string,
 	swIndex int,
 ) string {
@@ -324,7 +274,7 @@ func (f *LatexBigSwitchEncoder) encodeControllerPolicyComm(
 	)
 }
 
-func (f *LatexBigSwitchEncoder) encodeSDNTerm(
+func (f LatexBigSwitchEncoder) encodeSDNTerm(
 	ei EncodingInfo,
 ) string {
 	var sb strings.Builder
@@ -342,7 +292,7 @@ func (f *LatexBigSwitchEncoder) encodeSDNTerm(
 	)
 }
 
-func (f *LatexBigSwitchEncoder) encodeSwitchName(swIndex int, isNew bool) string {
+func (f LatexBigSwitchEncoder) encodeSwitchName(swIndex int, isNew bool) string {
 	name := fmt.Sprintf("%s%d", SW_BASE_NAME, swIndex)
 	if isNew {
 		return "new" + name
@@ -350,19 +300,7 @@ func (f *LatexBigSwitchEncoder) encodeSwitchName(swIndex int, isNew bool) string
 	return name
 }
 
-func (f *LatexBigSwitchEncoder) encodeControllers(ei EncodingInfo) string {
-	var sb strings.Builder
-
-	for i := range ei.usedContFTs {
-		cStr := f.encodeController(ei, i)
-		sb.WriteString(cStr)
-		sb.WriteString(NEW_LN)
-	}
-
-	return sb.String()
-}
-
-func (f *LatexBigSwitchEncoder) encodeController(
+func (f LatexBigSwitchEncoder) encodeController(
 	ei EncodingInfo,
 	cIndex int,
 ) string {
@@ -380,7 +318,7 @@ func (f *LatexBigSwitchEncoder) encodeController(
 	return fmt.Sprintf("%s & %s & %s%s", cName, f.sym.DEF, fmtC, NEW_LN)
 }
 
-func (f *LatexBigSwitchEncoder) getPassivePiPoComm(
+func (f LatexBigSwitchEncoder) getPassivePiPoComm(
 	forSwitch bool,
 	termName string,
 ) string {
@@ -398,7 +336,7 @@ func (f *LatexBigSwitchEncoder) getPassivePiPoComm(
 	)
 }
 
-func (f *LatexBigSwitchEncoder) joinNonDetThridColumn(strs []string) string {
+func (f LatexBigSwitchEncoder) joinNonDetThridColumn(strs []string) string {
 	// '& & ' are for placing the conent in the third column of the array env
 	nonDetSep := fmt.Sprintf(" %s %s& & ", f.sym.NONDET, NEW_LN)
 	return strings.Join(strs, nonDetSep)

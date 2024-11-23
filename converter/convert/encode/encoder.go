@@ -1,7 +1,5 @@
 package encode
 
-import "utwente.nl/topology-to-dynetkat-coverter/convert"
-
 type SymbolEncoding struct {
 	// NetKAT symbols
 	ONE    string // identity symbol
@@ -24,7 +22,7 @@ type SymbolEncoding struct {
 }
 
 type NetworkEncoder interface {
-	SymbolEncodings() SymbolEncoding
-	Encode(n *convert.Network) string
+	SymbolEncoding() SymbolEncoding
+	Encode(EncodingInfo) string
 	ProactiveSwitch() bool
 }

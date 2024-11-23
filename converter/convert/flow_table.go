@@ -2,46 +2,42 @@ package convert
 
 import (
 	"strconv"
-
-	"utwente.nl/topology-to-dynetkat-coverter/util"
 )
 
 type FlowTable struct {
-	entries map[util.I64Tup][]int64 // maps host destination id and incoming port to outgoing port
+	entries map[int64][]FlowRule // maps host destination id to corresponding flow rules
 }
 
-func (ft *FlowTable) Entries() map[util.I64Tup][]int64 {
+func (ft *FlowTable) Entries() map[int64][]FlowRule {
 	return ft.entries
 }
 
-func (ft *FlowTable) setEntries(newEntries map[util.I64Tup][]int64) {
+func (ft *FlowTable) setEntries(newEntries map[int64][]FlowRule) {
 	ft.entries = newEntries
 }
 
 func NewFlowTable() *FlowTable {
 	return &FlowTable{
-		entries: make(map[util.I64Tup][]int64),
+		entries: make(map[int64][]FlowRule),
 	}
 }
 
-func (ft *FlowTable) AddEntry(destHostId, inPort, outPort int64) {
-	key := util.NewI64Tup(destHostId, inPort)
-
+func (ft *FlowTable) AddEntry(destHostId int64, fr FlowRule) {
 	// do not add duplicate entries
-	if ft.hasEntry(key, outPort) {
+	if ft.hasEntry(destHostId, fr) {
 		return
 	}
 
-	ft.entries[key] = append(ft.entries[key], outPort)
+	ft.entries[destHostId] = append(ft.entries[destHostId], fr)
 }
 
-func (ft *FlowTable) hasEntry(key util.I64Tup, value int64) bool {
-	if _, exists := ft.entries[key]; !exists {
+func (ft *FlowTable) hasEntry(hostId int64, fr FlowRule) bool {
+	if _, exists := ft.entries[hostId]; !exists {
 		return false
 	}
 
-	for _, v := range ft.entries[key] {
-		if v == value {
+	for _, v := range ft.entries[hostId] {
+		if v.IsEqual(fr) {
 			return true
 		}
 	}
@@ -49,16 +45,55 @@ func (ft *FlowTable) hasEntry(key util.I64Tup, value int64) bool {
 	return false
 }
 
+/*
+Returns a pointer to a new flow table containing only
+the flow rules of the current flow table that satisfy
+the given predicate.
+*/
+func (ft *FlowTable) Filter(pred func(FlowRule) bool) *FlowTable {
+	newFt := NewFlowTable()
+	entries := make(map[int64][]FlowRule)
+
+	for hostId, frs := range ft.entries {
+		newFrs := []FlowRule{}
+		for _, fr := range frs {
+			if pred(fr) {
+				newFrs = append(newFrs, fr)
+			}
+		}
+
+		if len(newFrs) > 0 {
+			entries[hostId] = newFrs
+		}
+	}
+	newFt.setEntries(entries)
+
+	return newFt
+}
+
+// Extends the current flow table with the entries of the
+// given flow table
+func (ft *FlowTable) Extend(otherFt *FlowTable) {
+	if otherFt == nil {
+		return
+	}
+
+	for hostId, frs := range otherFt.entries {
+		for _, fr := range frs {
+			ft.AddEntry(hostId, fr)
+		}
+	}
+}
+
 func (ft *FlowTable) ToNetKATPolicies() []*SimpleNetKATPolicy {
 	policies := []*SimpleNetKATPolicy{}
 
-	for hostIdInPort, outPorts := range ft.entries {
-		dstHostId, inPort := hostIdInPort.Fst, hostIdInPort.Snd
-		for _, outPort := range outPorts {
+	for destHostId, frs := range ft.entries {
+		for _, fr := range frs {
 			policy := NewSimpleNetKATPolicy()
-			policy.AddTest("dst", strconv.FormatInt(dstHostId, 10))
-			policy.AddTest("port", strconv.FormatInt(inPort, 10))
-			policy.AddAssignment("port", strconv.FormatInt(outPort, 10))
+			policy.AddTest("dst", strconv.FormatInt(destHostId, 10))
+			policy.AddTest("port", strconv.FormatInt(fr.inPort, 10))
+			policy.AddAssignment("port", strconv.FormatInt(fr.outPort, 10))
 			policies = append(policies, policy)
 		}
 	}
@@ -69,13 +104,13 @@ func (ft *FlowTable) ToNetKATPolicies() []*SimpleNetKATPolicy {
 // returns a deep copy of this flow table
 func (ft *FlowTable) Copy() *FlowTable {
 	newFt := NewFlowTable()
-	entries := make(map[util.I64Tup][]int64)
+	entries := make(map[int64][]FlowRule)
 
-	for hostIdInPort, outPorts := range ft.entries {
-		newOutPorts := make([]int64, len(outPorts))
-		copy(newOutPorts, outPorts)
+	for hostId, frs := range ft.entries {
+		newFrs := make([]FlowRule, len(frs))
+		copy(newFrs, frs)
 
-		entries[hostIdInPort] = newOutPorts
+		entries[hostId] = newFrs
 	}
 	newFt.setEntries(entries)
 

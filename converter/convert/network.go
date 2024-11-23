@@ -66,8 +66,21 @@ func (n *Network) Switches() []*Switch {
 	return n.switches
 }
 
-func (n *Network) NodeIdToSw() map[int64]*Switch {
-	return n.nodeIdToSw
+func (n *Network) GetSwitchesWithUpdates() []*Switch {
+	withUpdates := []*Switch{}
+	for _, sw := range n.switches {
+		c := sw.Controller()
+		if c == nil {
+			continue
+		}
+
+		_, exists := c.NewFlowTables()[sw.TopoNode().ID()]
+		if exists {
+			withUpdates = append(withUpdates, sw)
+		}
+	}
+
+	return withUpdates
 }
 
 func (n *Network) Hosts() []*Host {
@@ -76,6 +89,14 @@ func (n *Network) Hosts() []*Host {
 
 func (n *Network) Controllers() []*Controller {
 	return n.controllers
+}
+
+func (n *Network) GetSwitch(nodeId int64) (*Switch, error) {
+	sw, exists := n.nodeIdToSw[nodeId]
+	if !exists {
+		return &Switch{}, util.NewError(util.ErrNoSwitchWithNodeId, nodeId)
+	}
+	return sw, nil
 }
 
 func makeSwitchesFromTopology(
@@ -237,10 +258,14 @@ func (n *Network) populateFlowTables(h1, h2 *Host) error {
 		return err
 	}
 
-	for nodeId, portTuples := range entries {
-		for _, fromPortToPort := range portTuples {
-			n.nodeIdToSw[nodeId].FlowTable().
-				AddEntry(h2.ID(), fromPortToPort.Fst, fromPortToPort.Snd)
+	for nodeId, frs := range entries {
+		for _, fr := range frs {
+			sw, err := n.GetSwitch(nodeId)
+			if err != nil {
+				return err
+			}
+
+			sw.FlowTable().AddEntry(h2.ID(), fr)
 		}
 	}
 
@@ -255,20 +280,20 @@ func (n *Network) GetFlowRulesForSwitchPath(
 	destSw *Switch,
 	inPortSrcSw int64,
 	outPortDestSw int64,
-) (map[int64][]util.I64Tup, error) {
+) (map[int64][]FlowRule, error) {
 	switch {
 	case srcSw == nil:
-		return make(map[int64][]util.I64Tup), util.NewError(util.ErrNilArgument, "srcSw")
+		return make(map[int64][]FlowRule), util.NewError(util.ErrNilArgument, "srcSw")
 	case destSw == nil:
-		return make(map[int64][]util.I64Tup), util.NewError(util.ErrNilArgument, "destSw")
+		return make(map[int64][]FlowRule), util.NewError(util.ErrNilArgument, "destSw")
 	}
 
 	path, exists := n.shortestPaths[util.NewI64Tup(srcSw.topoNode.ID(), destSw.topoNode.ID())]
 	if !exists {
-		return make(map[int64][]util.I64Tup), util.NewError(util.ErrNoPathBetweenSwitches)
+		return make(map[int64][]FlowRule), util.NewError(util.ErrNoPathBetweenSwitches)
 	}
 
-	entries := make(map[int64][]util.I64Tup)
+	entries := make(map[int64][]FlowRule)
 	receivingPort := inPortSrcSw
 
 	for i := range len(path) - 1 {
@@ -276,19 +301,18 @@ func (n *Network) GetFlowRulesForSwitchPath(
 		nextSwId := path[i+1].topoNode.ID()
 		fromPort, toPort, err := currSw.GetLinkPorts(nextSwId)
 		if err != nil {
-			return make(map[int64][]util.I64Tup), err
+			return make(map[int64][]FlowRule), err
 		}
 
-		inPortOutPort := util.I64Tup{Fst: receivingPort, Snd: fromPort}
-		outPortNextSwInPort := util.I64Tup{Fst: fromPort, Snd: toPort}
-
-		entries[currSw.topoNode.ID()] = []util.I64Tup{inPortOutPort, outPortNextSwInPort}
+		innerFr := NewFlowRule(receivingPort, fromPort, false)
+		linkFr := NewFlowRule(fromPort, toPort, true)
+		entries[currSw.topoNode.ID()] = []FlowRule{innerFr, linkFr}
 
 		receivingPort = toPort
 	}
 
-	inPortOutPort := util.I64Tup{Fst: receivingPort, Snd: outPortDestSw}
-	entries[destSw.topoNode.ID()] = []util.I64Tup{inPortOutPort}
+	innerFr := NewFlowRule(receivingPort, outPortDestSw, false)
+	entries[destSw.topoNode.ID()] = []FlowRule{innerFr}
 
 	return entries, nil
 }

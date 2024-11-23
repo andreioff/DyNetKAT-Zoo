@@ -15,7 +15,7 @@ var (
 	mockEdge2 graph.Edge  = simple.Edge{F: simple.Node(1), T: simple.Node(3)}
 	mockLink1 *Link       = &Link{topoEdge: mockEdge1, fromPort: 10, toPort: 11}
 	mockLink2 *Link       = &Link{topoEdge: mockEdge2, fromPort: 21, toPort: 22}
-	mockFt    *FlowTable  = &FlowTable{entries: make(map[util.I64Tup][]int64)}
+	mockFt    *FlowTable  = &FlowTable{entries: make(map[int64][]FlowRule)}
 	mockC     *Controller = &Controller{
 		id:            1,
 		switches:      []*Switch{},
@@ -73,7 +73,7 @@ func TestNewSwitch(t *testing.T) {
 				topoNode:   simple.Node(1),
 				links:      []*Link{},
 				controller: nil,
-				flowTable:  &FlowTable{entries: make(map[util.I64Tup][]int64)},
+				flowTable:  &FlowTable{entries: make(map[int64][]FlowRule)},
 			},
 			wantErr: "",
 		},
@@ -87,7 +87,7 @@ func TestNewSwitch(t *testing.T) {
 				topoNode:   simple.Node(1),
 				links:      []*Link{mockLink1, mockLink2},
 				controller: nil,
-				flowTable:  &FlowTable{entries: make(map[util.I64Tup][]int64)},
+				flowTable:  &FlowTable{entries: make(map[int64][]FlowRule)},
 			},
 			wantErr: "",
 		},
@@ -136,7 +136,7 @@ func TestSwitchGetters(t *testing.T) {
 				assert.EqualValues(t, simple.Node(1), sw.TopoNode())
 
 				assert.NotNil(t, sw.FlowTable())
-				assert.EqualValues(t, &FlowTable{make(map[util.I64Tup][]int64)}, sw.FlowTable())
+				assert.EqualValues(t, &FlowTable{make(map[int64][]FlowRule)}, sw.FlowTable())
 			},
 		},
 	}

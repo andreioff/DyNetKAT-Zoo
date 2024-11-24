@@ -6,8 +6,37 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"gonum.org/v1/gonum/graph/simple"
+
 	"utwente.nl/topology-to-dynetkat-coverter/util"
 )
+
+func getMockFT1() *FlowTable {
+	return &FlowTable{entries: map[int64][]FlowRule{
+		0: {{10, 11, false}, {10, 12, true}},
+		1: {{13, 14, false}},
+		3: {{15, 16, false}, {15, 17, true}},
+	}}
+}
+
+func getMockFT2() *FlowTable {
+	return &FlowTable{
+		entries: map[int64][]FlowRule{
+			4: {{30, 31, false}, {30, 32, true}},
+			6: {{33, 34, false}},
+			2: {{35, 36, false}, {35, 37, true}},
+		},
+	}
+}
+
+func getMockFT3() *FlowTable {
+	return &FlowTable{
+		map[int64][]FlowRule{
+			0: {{10, 11, false}, {10, 12, true}},
+			1: {{13, 14, false}, {13, 19, false}, {13, 20, true}},
+			3: {{15, 16, false}, {15, 17, true}},
+		},
+	}
+}
 
 func TestNewController(t *testing.T) {
 	type args struct {
@@ -258,11 +287,7 @@ func Test_newEntriesExist(t *testing.T) {
 		{
 			name: "Existing entries [Success]",
 			args: args{
-				swFt: &FlowTable{entries: map[int64][]FlowRule{
-					0: {{10, 11, false}, {10, 12, true}},
-					1: {{13, 14, false}},
-					3: {{15, 16, false}, {15, 17, true}},
-				}},
+				swFt:       getMockFT1(),
 				destHostId: 3,
 				flowRules: []FlowRule{
 					{15, 16, false},
@@ -274,11 +299,7 @@ func Test_newEntriesExist(t *testing.T) {
 		{
 			name: "New entries [Success]",
 			args: args{
-				swFt: &FlowTable{entries: map[int64][]FlowRule{
-					0: {{10, 11, false}, {10, 12, true}},
-					1: {{13, 14, false}},
-					3: {{15, 16, false}, {15, 17, true}},
-				}},
+				swFt:       getMockFT1(),
 				destHostId: 4,
 				flowRules: []FlowRule{
 					{18, 19, false},
@@ -290,11 +311,7 @@ func Test_newEntriesExist(t *testing.T) {
 		{
 			name: "Mixed entries [Success]",
 			args: args{
-				swFt: &FlowTable{entries: map[int64][]FlowRule{
-					0: {{10, 11, false}, {10, 12, true}},
-					1: {{13, 14, false}},
-					3: {{15, 16, false}, {15, 17, true}},
-				}},
+				swFt:       getMockFT1(),
 				destHostId: 3,
 				flowRules: []FlowRule{
 					{15, 16, false},
@@ -366,14 +383,8 @@ func TestController_AddNewFlowRules(t *testing.T) {
 					{
 						topoNode:   simple.Node(1),
 						controller: nil,
-						flowTable: &FlowTable{
-							map[int64][]FlowRule{
-								0: {{10, 11, false}, {10, 12, true}},
-								1: {{13, 14, false}},
-								3: {{15, 16, false}, {15, 17, true}},
-							},
-						},
-						links: []*Link{},
+						flowTable:  getMockFT1(),
+						links:      []*Link{},
 					},
 					{
 						topoNode:   simple.Node(2),
@@ -383,13 +394,7 @@ func TestController_AddNewFlowRules(t *testing.T) {
 					},
 				},
 				newFlowTables: map[int64]*FlowTable{
-					2: {
-						map[int64][]FlowRule{
-							4: {{30, 31, false}, {30, 32, true}},
-							6: {{33, 34, false}},
-							2: {{35, 36, false}, {35, 37, true}},
-						},
-					},
+					2: getMockFT2(),
 				},
 			},
 			args: args{
@@ -409,14 +414,8 @@ func TestController_AddNewFlowRules(t *testing.T) {
 					{
 						topoNode:   simple.Node(1),
 						controller: nil,
-						flowTable: &FlowTable{
-							map[int64][]FlowRule{
-								0: {{10, 11, false}, {10, 12, true}},
-								1: {{13, 14, true}},
-								3: {{15, 16, false}, {15, 17, true}},
-							},
-						},
-						links: []*Link{},
+						flowTable:  getMockFT1(),
+						links:      []*Link{},
 					},
 					{
 						topoNode:   simple.Node(2),
@@ -426,13 +425,7 @@ func TestController_AddNewFlowRules(t *testing.T) {
 					},
 				},
 				newFlowTables: map[int64]*FlowTable{
-					2: {
-						map[int64][]FlowRule{
-							4: {{30, 31, false}, {30, 32, true}},
-							6: {{33, 34, false}},
-							2: {{35, 36, false}, {35, 37, true}},
-						},
-					},
+					2: getMockFT2(),
 				},
 			},
 			args: args{
@@ -443,20 +436,8 @@ func TestController_AddNewFlowRules(t *testing.T) {
 			assertSetup: func(t *testing.T, c *Controller, initial *Controller) {
 				assert.EqualValues(t, initial.switches, c.switches)
 				assert.EqualValues(t, map[int64]*FlowTable{
-					1: {
-						map[int64][]FlowRule{
-							0: {{10, 11, false}, {10, 12, true}},
-							1: {{13, 14, true}, {13, 19, false}, {13, 20, true}},
-							3: {{15, 16, false}, {15, 17, true}},
-						},
-					},
-					2: {
-						map[int64][]FlowRule{
-							4: {{30, 31, false}, {30, 32, true}},
-							6: {{33, 34, false}},
-							2: {{35, 36, false}, {35, 37, true}},
-						},
-					},
+					1: getMockFT3(),
+					2: getMockFT2(),
 				}, c.newFlowTables)
 			},
 		},
@@ -468,14 +449,8 @@ func TestController_AddNewFlowRules(t *testing.T) {
 					{
 						topoNode:   simple.Node(1),
 						controller: nil,
-						flowTable: &FlowTable{
-							map[int64][]FlowRule{
-								0: {{10, 11, false}, {10, 12, true}},
-								1: {{13, 14, true}},
-								3: {{15, 16, false}, {15, 17, true}},
-							},
-						},
-						links: []*Link{},
+						flowTable:  getMockFT1(),
+						links:      []*Link{},
 					},
 					{
 						topoNode:   simple.Node(2),
@@ -485,20 +460,8 @@ func TestController_AddNewFlowRules(t *testing.T) {
 					},
 				},
 				newFlowTables: map[int64]*FlowTable{
-					1: {
-						map[int64][]FlowRule{
-							0: {{10, 11, false}, {10, 12, true}},
-							1: {{13, 14, true}, {13, 19, false}, {13, 20, true}},
-							3: {{15, 16, false}, {15, 17, true}},
-						},
-					},
-					2: {
-						map[int64][]FlowRule{
-							4: {{30, 31, false}, {30, 32, true}},
-							6: {{33, 34, false}},
-							2: {{35, 36, false}, {35, 37, true}},
-						},
-					},
+					1: getMockFT3(),
+					2: getMockFT2(),
 				},
 			},
 			args: args{
@@ -518,14 +481,8 @@ func TestController_AddNewFlowRules(t *testing.T) {
 					{
 						topoNode:   simple.Node(1),
 						controller: nil,
-						flowTable: &FlowTable{
-							map[int64][]FlowRule{
-								0: {{10, 11, false}, {10, 12, true}},
-								1: {{13, 14, true}},
-								3: {{15, 16, false}, {15, 17, true}},
-							},
-						},
-						links: []*Link{},
+						flowTable:  getMockFT1(),
+						links:      []*Link{},
 					},
 					{
 						topoNode:   simple.Node(2),
@@ -538,18 +495,12 @@ func TestController_AddNewFlowRules(t *testing.T) {
 					1: {
 						map[int64][]FlowRule{
 							0: {{10, 11, false}, {10, 12, true}},
-							1: {{13, 14, true}},
+							1: {{13, 14, false}},
 							3: {{15, 16, false}, {15, 17, true}},
 							5: {{18, 19, false}},
 						},
 					},
-					2: {
-						map[int64][]FlowRule{
-							4: {{30, 31, false}, {30, 32, true}},
-							6: {{33, 34, false}},
-							2: {{35, 36, false}, {35, 37, true}},
-						},
-					},
+					2: getMockFT2(),
 				},
 			},
 			args: args{
@@ -563,18 +514,12 @@ func TestController_AddNewFlowRules(t *testing.T) {
 					1: {
 						map[int64][]FlowRule{
 							0: {{10, 11, false}, {10, 12, true}},
-							1: {{13, 14, true}},
+							1: {{13, 14, false}},
 							3: {{15, 16, false}, {15, 17, true}, {15, 20, false}, {21, 22, true}},
 							5: {{18, 19, false}},
 						},
 					},
-					2: {
-						map[int64][]FlowRule{
-							4: {{30, 31, false}, {30, 32, true}},
-							6: {{33, 34, false}},
-							2: {{35, 36, false}, {35, 37, true}},
-						},
-					},
+					2: getMockFT2(),
 				}, c.newFlowTables)
 			},
 		},

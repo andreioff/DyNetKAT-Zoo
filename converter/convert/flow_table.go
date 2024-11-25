@@ -4,6 +4,11 @@ import (
 	"strconv"
 )
 
+const (
+	DST_STRING  = "dst"
+	PORT_STRING = "port"
+)
+
 type FlowTable struct {
 	entries map[int64][]FlowRule // maps host destination id to corresponding flow rules
 }
@@ -51,7 +56,6 @@ the flow rules of the current flow table that satisfy
 the given predicate.
 */
 func (ft *FlowTable) Filter(pred func(FlowRule) bool) *FlowTable {
-	newFt := NewFlowTable()
 	entries := make(map[int64][]FlowRule)
 
 	for hostId, frs := range ft.entries {
@@ -66,8 +70,9 @@ func (ft *FlowTable) Filter(pred func(FlowRule) bool) *FlowTable {
 			entries[hostId] = newFrs
 		}
 	}
-	newFt.setEntries(entries)
 
+	newFt := NewFlowTable()
+	newFt.setEntries(entries)
 	return newFt
 }
 
@@ -91,9 +96,9 @@ func (ft *FlowTable) ToNetKATPolicies() []*SimpleNetKATPolicy {
 	for destHostId, frs := range ft.entries {
 		for _, fr := range frs {
 			policy := NewSimpleNetKATPolicy()
-			policy.AddTest("dst", strconv.FormatInt(destHostId, 10))
-			policy.AddTest("port", strconv.FormatInt(fr.inPort, 10))
-			policy.AddAssignment("port", strconv.FormatInt(fr.outPort, 10))
+			policy.AddTest(DST_STRING, strconv.FormatInt(destHostId, 10))
+			policy.AddTest(PORT_STRING, strconv.FormatInt(fr.inPort, 10))
+			policy.AddAssignment(PORT_STRING, strconv.FormatInt(fr.outPort, 10))
 			policies = append(policies, policy)
 		}
 	}

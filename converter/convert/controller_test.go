@@ -250,7 +250,7 @@ func Test_newEntriesExist(t *testing.T) {
 		{
 			name: "Empty entries [Success]",
 			args: args{
-				swFt:       &FlowTable{entries: make(map[int64][]FlowRule)},
+				swFt:       getMockEmptyFT(),
 				destHostId: 0,
 				flowRules:  []FlowRule{},
 			},

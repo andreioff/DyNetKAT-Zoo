@@ -15,7 +15,6 @@ var (
 	mockEdge2 graph.Edge  = simple.Edge{F: simple.Node(1), T: simple.Node(3)}
 	mockLink1 *Link       = &Link{topoEdge: mockEdge1, fromPort: 10, toPort: 11}
 	mockLink2 *Link       = &Link{topoEdge: mockEdge2, fromPort: 21, toPort: 22}
-	mockFt    *FlowTable  = &FlowTable{entries: make(map[int64][]FlowRule)}
 	mockC     *Controller = &Controller{
 		id:            1,
 		switches:      []*Switch{},
@@ -73,7 +72,7 @@ func TestNewSwitch(t *testing.T) {
 				topoNode:   simple.Node(1),
 				links:      []*Link{},
 				controller: nil,
-				flowTable:  &FlowTable{entries: make(map[int64][]FlowRule)},
+				flowTable:  getMockEmptyFT(),
 			},
 			wantErr: "",
 		},
@@ -87,7 +86,7 @@ func TestNewSwitch(t *testing.T) {
 				topoNode:   simple.Node(1),
 				links:      []*Link{mockLink1, mockLink2},
 				controller: nil,
-				flowTable:  &FlowTable{entries: make(map[int64][]FlowRule)},
+				flowTable:  getMockEmptyFT(),
 			},
 			wantErr: "",
 		},
@@ -123,7 +122,7 @@ func TestSwitchGetters(t *testing.T) {
 			fields: fields{
 				topoNode:   simple.Node(1),
 				controller: mockC,
-				flowTable:  mockFt,
+				flowTable:  getMockEmptyFT(),
 				links:      []*Link{mockLink1, mockLink2},
 			},
 			assertSetup: func(t *testing.T, sw *Switch) {
@@ -136,7 +135,7 @@ func TestSwitchGetters(t *testing.T) {
 				assert.EqualValues(t, simple.Node(1), sw.TopoNode())
 
 				assert.NotNil(t, sw.FlowTable())
-				assert.EqualValues(t, &FlowTable{make(map[int64][]FlowRule)}, sw.FlowTable())
+				assert.EqualValues(t, getMockEmptyFT(), sw.FlowTable())
 			},
 		},
 	}
@@ -236,7 +235,7 @@ func TestSwitch_GetLinkPorts(t *testing.T) {
 			fields: fields{
 				topoNode:   simple.Node(1),
 				controller: nil,
-				flowTable:  mockFt,
+				flowTable:  getMockEmptyFT(),
 				links:      []*Link{},
 			},
 			args:    args{-1},
@@ -247,7 +246,7 @@ func TestSwitch_GetLinkPorts(t *testing.T) {
 			fields: fields{
 				topoNode:   simple.Node(1),
 				controller: nil,
-				flowTable:  mockFt,
+				flowTable:  getMockEmptyFT(),
 				links: []*Link{
 					{
 						topoEdge: simple.Edge{F: simple.Node(1), T: simple.Node(2)},
@@ -279,7 +278,7 @@ func TestSwitch_GetLinkPorts(t *testing.T) {
 			fields: fields{
 				topoNode:   simple.Node(1),
 				controller: nil,
-				flowTable:  mockFt,
+				flowTable:  getMockEmptyFT(),
 				links: []*Link{
 					{
 						topoEdge: simple.Edge{F: simple.Node(1), T: simple.Node(3)},
@@ -307,7 +306,7 @@ func TestSwitch_GetLinkPorts(t *testing.T) {
 			fields: fields{
 				topoNode:   simple.Node(1),
 				controller: nil,
-				flowTable:  mockFt,
+				flowTable:  getMockEmptyFT(),
 				links: []*Link{
 					{
 						topoEdge: simple.Edge{F: simple.Node(1), T: simple.Node(2)},
@@ -335,7 +334,7 @@ func TestSwitch_GetLinkPorts(t *testing.T) {
 			fields: fields{
 				topoNode:   simple.Node(1),
 				controller: nil,
-				flowTable:  mockFt,
+				flowTable:  getMockEmptyFT(),
 				links: []*Link{
 					{
 						topoEdge: simple.Edge{F: simple.Node(1), T: simple.Node(2)},

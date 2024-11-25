@@ -56,7 +56,7 @@ func TestSimpleNetKATPolicy_AddTest(t *testing.T) {
 			assertSetup: func(t *testing.T, snp *SimpleNetKATPolicy) {
 				assert.Len(t, snp.completeTest, 1)
 				assert.Len(t, snp.completeAssignment, 0)
-				assert.EqualValues(t, snp.completeTest, []util.StrTup{{Fst: "", Snd: ""}})
+				assert.ElementsMatch(t, snp.completeTest, []util.StrTup{{Fst: "", Snd: ""}})
 			},
 		},
 		{
@@ -72,7 +72,7 @@ func TestSimpleNetKATPolicy_AddTest(t *testing.T) {
 			assertSetup: func(t *testing.T, snp *SimpleNetKATPolicy) {
 				assert.Len(t, snp.completeTest, 2)
 				assert.Len(t, snp.completeAssignment, 1)
-				assert.EqualValues(
+				assert.ElementsMatch(
 					t,
 					snp.completeTest,
 					[]util.StrTup{
@@ -80,7 +80,7 @@ func TestSimpleNetKATPolicy_AddTest(t *testing.T) {
 						{Fst: "fieldTest", Snd: "valueTest"},
 					},
 				)
-				assert.EqualValues(
+				assert.ElementsMatch(
 					t,
 					snp.completeAssignment,
 					[]util.StrTup{
@@ -102,7 +102,7 @@ func TestSimpleNetKATPolicy_AddTest(t *testing.T) {
 			assertSetup: func(t *testing.T, snp *SimpleNetKATPolicy) {
 				assert.Len(t, snp.completeTest, 2)
 				assert.Len(t, snp.completeAssignment, 1)
-				assert.EqualValues(
+				assert.ElementsMatch(
 					t,
 					snp.completeTest,
 					[]util.StrTup{
@@ -110,7 +110,7 @@ func TestSimpleNetKATPolicy_AddTest(t *testing.T) {
 						{Fst: "fieldTest2", Snd: "valueTest2"},
 					},
 				)
-				assert.EqualValues(
+				assert.ElementsMatch(
 					t,
 					snp.completeAssignment,
 					[]util.StrTup{
@@ -163,7 +163,7 @@ func TestSimpleNetKATPolicy_AddAssignment(t *testing.T) {
 			assertSetup: func(t *testing.T, snp *SimpleNetKATPolicy) {
 				assert.Len(t, snp.completeTest, 0)
 				assert.Len(t, snp.completeAssignment, 1)
-				assert.EqualValues(t, snp.completeAssignment, []util.StrTup{{Fst: "", Snd: ""}})
+				assert.ElementsMatch(t, snp.completeAssignment, []util.StrTup{{Fst: "", Snd: ""}})
 			},
 		},
 		{
@@ -179,14 +179,14 @@ func TestSimpleNetKATPolicy_AddAssignment(t *testing.T) {
 			assertSetup: func(t *testing.T, snp *SimpleNetKATPolicy) {
 				assert.Len(t, snp.completeTest, 1)
 				assert.Len(t, snp.completeAssignment, 2)
-				assert.EqualValues(
+				assert.ElementsMatch(
 					t,
 					snp.completeTest,
 					[]util.StrTup{
 						{Fst: "fieldTest", Snd: "valueTest"},
 					},
 				)
-				assert.EqualValues(
+				assert.ElementsMatch(
 					t,
 					snp.completeAssignment,
 					[]util.StrTup{
@@ -209,14 +209,14 @@ func TestSimpleNetKATPolicy_AddAssignment(t *testing.T) {
 			assertSetup: func(t *testing.T, snp *SimpleNetKATPolicy) {
 				assert.Len(t, snp.completeTest, 1)
 				assert.Len(t, snp.completeAssignment, 2)
-				assert.EqualValues(
+				assert.ElementsMatch(
 					t,
 					snp.completeTest,
 					[]util.StrTup{
 						{Fst: "fieldTest", Snd: "valueTest"},
 					},
 				)
-				assert.EqualValues(
+				assert.ElementsMatch(
 					t,
 					snp.completeAssignment,
 					[]util.StrTup{

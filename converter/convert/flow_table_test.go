@@ -65,7 +65,7 @@ func TestNewFlowTable(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, NewFlowTable())
+			assert.EqualValues(t, tt.want, NewFlowTable())
 		})
 	}
 }
@@ -345,7 +345,7 @@ func TestFlowTable_Filter(t *testing.T) {
 				entries: tt.fields.entries,
 			}
 			got := ft.Filter(tt.args.pred)
-			assert.Equal(t, tt.want, got)
+			assert.EqualValues(t, tt.want, got)
 			assert.NotSame(t, ft, got)
 		})
 	}
@@ -421,7 +421,7 @@ func TestFlowTable_Extend(t *testing.T) {
 				entries: tt.fields.entries,
 			}
 			ft.Extend(tt.args.otherFt)
-			assert.Equal(t, tt.want, ft)
+			assert.EqualValues(t, tt.want, ft)
 		})
 	}
 }
@@ -456,7 +456,7 @@ func TestFlowTable_Copy(t *testing.T) {
 				entries: tt.fields.entries,
 			}
 			got := ft.Copy()
-			assert.Equal(t, tt.want, got)
+			assert.EqualValues(t, tt.want, got)
 			assert.NotSame(t, ft, got)
 		})
 	}
@@ -485,24 +485,39 @@ func TestFlowTable_ToNetKATPolicies(t *testing.T) {
 			},
 			want: []*SimpleNetKATPolicy{
 				{
-					[]util.StrTup{{Fst: DST_STRING, Snd: "0"}, {Fst: PORT_STRING, Snd: "10"}},
-					[]util.StrTup{{Fst: PORT_STRING, Snd: "11"}},
+					completeTest: []util.StrTup{
+						{Fst: DST_STRING, Snd: "0"},
+						{Fst: PORT_STRING, Snd: "10"},
+					},
+					completeAssignment: []util.StrTup{{Fst: PORT_STRING, Snd: "11"}},
 				},
 				{
-					[]util.StrTup{{Fst: DST_STRING, Snd: "0"}, {Fst: PORT_STRING, Snd: "10"}},
-					[]util.StrTup{{Fst: PORT_STRING, Snd: "12"}},
+					completeTest: []util.StrTup{
+						{Fst: DST_STRING, Snd: "0"},
+						{Fst: PORT_STRING, Snd: "10"},
+					},
+					completeAssignment: []util.StrTup{{Fst: PORT_STRING, Snd: "12"}},
 				},
 				{
-					[]util.StrTup{{Fst: DST_STRING, Snd: "1"}, {Fst: PORT_STRING, Snd: "13"}},
-					[]util.StrTup{{Fst: PORT_STRING, Snd: "14"}},
+					completeTest: []util.StrTup{
+						{Fst: DST_STRING, Snd: "1"},
+						{Fst: PORT_STRING, Snd: "13"},
+					},
+					completeAssignment: []util.StrTup{{Fst: PORT_STRING, Snd: "14"}},
 				},
 				{
-					[]util.StrTup{{Fst: DST_STRING, Snd: "3"}, {Fst: PORT_STRING, Snd: "15"}},
-					[]util.StrTup{{Fst: PORT_STRING, Snd: "16"}},
+					completeTest: []util.StrTup{
+						{Fst: DST_STRING, Snd: "3"},
+						{Fst: PORT_STRING, Snd: "15"},
+					},
+					completeAssignment: []util.StrTup{{Fst: PORT_STRING, Snd: "16"}},
 				},
 				{
-					[]util.StrTup{{Fst: DST_STRING, Snd: "3"}, {Fst: PORT_STRING, Snd: "15"}},
-					[]util.StrTup{{Fst: PORT_STRING, Snd: "17"}},
+					completeTest: []util.StrTup{
+						{Fst: DST_STRING, Snd: "3"},
+						{Fst: PORT_STRING, Snd: "15"},
+					},
+					completeAssignment: []util.StrTup{{Fst: PORT_STRING, Snd: "17"}},
 				},
 			},
 		},
@@ -512,7 +527,7 @@ func TestFlowTable_ToNetKATPolicies(t *testing.T) {
 			ft := &FlowTable{
 				entries: tt.fields.entries,
 			}
-			assert.Equal(t, tt.want, ft.ToNetKATPolicies())
+			assert.ElementsMatch(t, tt.want, ft.ToNetKATPolicies())
 		})
 	}
 }

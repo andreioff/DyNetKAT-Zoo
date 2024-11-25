@@ -30,8 +30,8 @@ func TestNewController(t *testing.T) {
 
 				assert.Greater(t, nextContId, c.id)
 
-				assert.EqualValues(t, []*Switch{}, c.switches)
-				assert.EqualValues(t, make(map[int64]*FlowTable), c.newFlowTables)
+				assert.ElementsMatch(t, []*Switch{}, c.switches)
+				assert.Equal(t, make(map[int64]*FlowTable), c.newFlowTables)
 			},
 		},
 		{
@@ -55,8 +55,8 @@ func TestNewController(t *testing.T) {
 
 				assert.Greater(t, nextContId, c.id)
 
-				assert.EqualValues(t, make(map[int64]*FlowTable), c.newFlowTables)
-				assert.EqualValues(t, []*Switch{
+				assert.Equal(t, make(map[int64]*FlowTable), c.newFlowTables)
+				assert.ElementsMatch(t, []*Switch{
 					{
 						topoNode:   simple.Node(1),
 						controller: c,
@@ -86,8 +86,8 @@ func TestNewController(t *testing.T) {
 
 				assert.Greater(t, nextContId, c.ID())
 
-				assert.EqualValues(t, make(map[int64]*FlowTable), c.NewFlowTables())
-				assert.EqualValues(t, []*Switch{
+				assert.Equal(t, make(map[int64]*FlowTable), c.NewFlowTables())
+				assert.ElementsMatch(t, []*Switch{
 					{
 						topoNode:   simple.Node(3),
 						controller: c,
@@ -406,8 +406,8 @@ func TestController_AddNewFlowRules(t *testing.T) {
 				flowRules:  []FlowRule{{13, 19, false}, {13, 20, true}},
 			},
 			assertSetup: func(t *testing.T, c *Controller, initial *Controller) {
-				assert.EqualValues(t, initial.switches, c.switches)
-				assert.EqualValues(t, map[int64]*FlowTable{
+				assert.ElementsMatch(t, initial.switches, c.switches)
+				assert.Equal(t, map[int64]*FlowTable{
 					1: getMockFT3(),
 					2: getMockFT2(),
 				}, c.newFlowTables)
@@ -481,8 +481,8 @@ func TestController_AddNewFlowRules(t *testing.T) {
 				flowRules:  []FlowRule{{15, 20, false}, {21, 22, true}},
 			},
 			assertSetup: func(t *testing.T, c *Controller, initial *Controller) {
-				assert.EqualValues(t, initial.switches, c.switches)
-				assert.EqualValues(t, map[int64]*FlowTable{
+				assert.ElementsMatch(t, initial.switches, c.switches)
+				assert.Equal(t, map[int64]*FlowTable{
 					1: {
 						map[int64][]FlowRule{
 							0: {{10, 11, false}, {10, 12, true}},

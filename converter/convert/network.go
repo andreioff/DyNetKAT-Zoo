@@ -44,43 +44,12 @@ func NewNetwork(topo util.Graph) (*Network, error) {
 	}, nil
 }
 
-func mapNodeToSwitch(switches []*Switch) map[int64]*Switch {
-	nodeIdToSwitch := make(map[int64]*Switch, len(switches))
-
-	for _, sw := range switches {
-		nodeIdToSwitch[sw.topoNode.ID()] = sw
-	}
-
-	return nodeIdToSwitch
-}
-
 func (n *Network) PortNr() int64 {
 	return n.portNr
 }
 
-func (n *Network) SetPortNr(newPortNr int64) {
-	n.portNr = newPortNr
-}
-
 func (n *Network) Switches() []*Switch {
 	return n.switches
-}
-
-func (n *Network) GetSwitchesWithUpdates() []*Switch {
-	withUpdates := []*Switch{}
-	for _, sw := range n.switches {
-		c := sw.Controller()
-		if c == nil {
-			continue
-		}
-
-		_, exists := c.NewFlowTables()[sw.TopoNode().ID()]
-		if exists {
-			withUpdates = append(withUpdates, sw)
-		}
-	}
-
-	return withUpdates
 }
 
 func (n *Network) Hosts() []*Host {
@@ -97,102 +66,6 @@ func (n *Network) GetSwitch(nodeId int64) (*Switch, error) {
 		return &Switch{}, util.NewError(util.ErrNoSwitchWithNodeId, nodeId)
 	}
 	return sw, nil
-}
-
-func makeSwitchesFromTopology(
-	topo util.Graph,
-	edgeToLink map[util.I64Tup]*Link,
-) ([]*Switch, error) {
-	switches := []*Switch{}
-
-	iter := topo.Nodes()
-	for iter.Next() {
-		links, err := getSwitchLinks(topo, iter.Node(), edgeToLink)
-		if err != nil {
-			return []*Switch{}, err
-		}
-
-		newSw, err := NewSwitch(iter.Node(), links)
-		if err != nil {
-			return []*Switch{}, err
-		}
-
-		switches = append(switches, newSw)
-	}
-
-	return switches, nil
-}
-
-func makeLinks(topo util.Graph, portNr *int64) (map[util.I64Tup]*Link, error) {
-	if portNr == nil {
-		return make(map[util.I64Tup]*Link), util.NewError(util.ErrNilArgument, "portNr")
-	}
-
-	edgeTolink := make(map[util.I64Tup]*Link)
-	iter := topo.Edges()
-	for iter.Next() {
-		newLink, err := NewLink(iter.Edge(), *portNr, *portNr+1)
-		if err != nil {
-			return make(map[util.I64Tup]*Link), err
-		}
-
-		edgeId := util.NewI64Tup(iter.Edge().From().ID(), iter.Edge().To().ID())
-		edgeTolink[edgeId] = newLink
-		*portNr += 2
-	}
-	return edgeTolink, nil
-}
-
-func getSwitchLinks(
-	topo util.Graph,
-	node graph.Node,
-	edgeToLink map[util.I64Tup]*Link,
-) ([]*Link, error) {
-	incidentEdges, err := util.GetIncidentEdges(topo, node)
-	if err != nil {
-		return []*Link{}, err
-	}
-
-	links := []*Link{}
-	for _, edge := range incidentEdges {
-		edgeId := util.NewI64Tup(edge.From().ID(), edge.To().ID())
-		link, exists := edgeToLink[edgeId]
-		if !exists || link == nil {
-			return []*Link{}, util.NewError(util.ErrEdgeNotMappedToLink)
-		}
-
-		links = append(links, link)
-	}
-	return links, nil
-}
-
-func nodePathToSwitchPath(path []graph.Node, nodeToSwitch map[int64]*Switch) []*Switch {
-	switchPath := []*Switch{}
-	for _, node := range path {
-		switchPath = append(switchPath, nodeToSwitch[node.ID()])
-	}
-	return switchPath
-}
-
-func computeShortestPaths(topo util.Graph, switches []*Switch) map[util.I64Tup][]*Switch {
-	nodePaths := path.DijkstraAllPaths(&topo)
-	nodeToSwitch := mapNodeToSwitch(switches)
-	switchPaths := make(map[util.I64Tup][]*Switch)
-
-	for i := range len(switches) {
-		sw1Id := switches[i].topoNode.ID()
-
-		for j := range len(switches) {
-			sw2Id := switches[j].topoNode.ID()
-			nodePath, _, _ := nodePaths.Between(sw1Id, sw2Id)
-			switchPaths[util.NewI64Tup(sw1Id, sw2Id)] = nodePathToSwitchPath(
-				nodePath,
-				nodeToSwitch,
-			)
-		}
-	}
-
-	return switchPaths
 }
 
 func (n *Network) assignHosts(hostsNr uint) error {
@@ -380,4 +253,110 @@ func (n *Network) AddControllers(controllersNr uint) error {
 	}
 
 	return nil
+}
+
+func mapNodeToSwitch(switches []*Switch) map[int64]*Switch {
+	nodeIdToSwitch := make(map[int64]*Switch, len(switches))
+
+	for _, sw := range switches {
+		nodeIdToSwitch[sw.topoNode.ID()] = sw
+	}
+
+	return nodeIdToSwitch
+}
+
+func makeSwitchesFromTopology(
+	topo util.Graph,
+	edgeToLink map[util.I64Tup]*Link,
+) ([]*Switch, error) {
+	switches := []*Switch{}
+
+	iter := topo.Nodes()
+	for iter.Next() {
+		links, err := getSwitchLinks(topo, iter.Node(), edgeToLink)
+		if err != nil {
+			return []*Switch{}, err
+		}
+
+		newSw, err := NewSwitch(iter.Node(), links)
+		if err != nil {
+			return []*Switch{}, err
+		}
+
+		switches = append(switches, newSw)
+	}
+
+	return switches, nil
+}
+
+func makeLinks(topo util.Graph, portNr *int64) (map[util.I64Tup]*Link, error) {
+	if portNr == nil {
+		return make(map[util.I64Tup]*Link), util.NewError(util.ErrNilArgument, "portNr")
+	}
+
+	edgeTolink := make(map[util.I64Tup]*Link)
+	iter := topo.Edges()
+	for iter.Next() {
+		newLink, err := NewLink(iter.Edge(), *portNr, *portNr+1)
+		if err != nil {
+			return make(map[util.I64Tup]*Link), err
+		}
+
+		edgeId := util.NewI64Tup(iter.Edge().From().ID(), iter.Edge().To().ID())
+		edgeTolink[edgeId] = newLink
+		*portNr += 2
+	}
+	return edgeTolink, nil
+}
+
+func getSwitchLinks(
+	topo util.Graph,
+	node graph.Node,
+	edgeToLink map[util.I64Tup]*Link,
+) ([]*Link, error) {
+	incidentEdges, err := util.GetIncidentEdges(topo, node)
+	if err != nil {
+		return []*Link{}, err
+	}
+
+	links := []*Link{}
+	for _, edge := range incidentEdges {
+		edgeId := util.NewI64Tup(edge.From().ID(), edge.To().ID())
+		link, exists := edgeToLink[edgeId]
+		if !exists || link == nil {
+			return []*Link{}, util.NewError(util.ErrEdgeNotMappedToLink)
+		}
+
+		links = append(links, link)
+	}
+	return links, nil
+}
+
+func nodePathToSwitchPath(path []graph.Node, nodeToSwitch map[int64]*Switch) []*Switch {
+	switchPath := []*Switch{}
+	for _, node := range path {
+		switchPath = append(switchPath, nodeToSwitch[node.ID()])
+	}
+	return switchPath
+}
+
+func computeShortestPaths(topo util.Graph, switches []*Switch) map[util.I64Tup][]*Switch {
+	nodePaths := path.DijkstraAllPaths(&topo)
+	nodeToSwitch := mapNodeToSwitch(switches)
+	switchPaths := make(map[util.I64Tup][]*Switch)
+
+	for i := range len(switches) {
+		sw1Id := switches[i].topoNode.ID()
+
+		for j := range len(switches) {
+			sw2Id := switches[j].topoNode.ID()
+			nodePath, _, _ := nodePaths.Between(sw1Id, sw2Id)
+			switchPaths[util.NewI64Tup(sw1Id, sw2Id)] = nodePathToSwitchPath(
+				nodePath,
+				nodeToSwitch,
+			)
+		}
+	}
+
+	return switchPaths
 }

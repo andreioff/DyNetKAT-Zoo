@@ -35,7 +35,7 @@ func TestConvert_NewHost(t *testing.T) {
 			switchPort: 4,
 			sw:         mockSw,
 			assertSetup: func(t *testing.T, nextHostId int64, host *Host, err error) {
-				assert.Nil(t, err)
+				assert.NoError(t, err)
 				assert.NotNil(t, host)
 
 				assert.Greater(t, nextHostId, host.id)

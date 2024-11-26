@@ -95,9 +95,9 @@ func TestNewSwitch(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := NewSwitch(tt.args.node, tt.args.links)
 			if tt.wantErr == "" {
-				assert.Nil(t, err)
+				assert.NoError(t, err)
 			} else {
-				assert.NotNil(t, err)
+				assert.Error(t, err)
 				assert.Equal(t, tt.wantErr, err.Error())
 			}
 			assert.EqualValues(t, tt.want, got)
@@ -373,9 +373,9 @@ func TestSwitch_GetLinkPorts(t *testing.T) {
 			}
 			gotFromPort, gotToPort, err := s.GetLinkPorts(tt.args.otherNodeId)
 			if tt.wantErr == "" {
-				assert.Nil(t, err)
+				assert.NoError(t, err)
 			} else {
-				assert.NotNil(t, err)
+				assert.Error(t, err)
 				assert.Equal(t, tt.wantErr, err.Error())
 			}
 			assert.Equal(t, tt.wantFromPort, gotFromPort)
@@ -481,9 +481,9 @@ func Test_validateLinks(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			gotErr := validateLinks(tt.args.node, tt.args.links)
 			if tt.wantErr == "" {
-				assert.Nil(t, gotErr)
+				assert.NoError(t, gotErr)
 			} else {
-				assert.NotNil(t, gotErr)
+				assert.Error(t, gotErr)
 				assert.Equal(t, tt.wantErr, gotErr.Error())
 			}
 		})

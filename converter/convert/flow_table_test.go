@@ -99,7 +99,7 @@ func TestFlowTable_Entries(t *testing.T) {
 			ft := &FlowTable{
 				entries: tt.fields.entries,
 			}
-			assert.Equal(t, tt.want, ft.Entries())
+			util.AssertEqualMaps(t, tt.want, ft.Entries())
 		})
 	}
 }
@@ -144,7 +144,7 @@ func TestFlowTable_setEntries(t *testing.T) {
 				entries: tt.fields.entries,
 			}
 			ft.setEntries(tt.args.newEntries)
-			assert.Equal(t, tt.want, ft.Entries())
+			util.AssertEqualMaps(t, tt.want, ft.Entries())
 		})
 	}
 }

@@ -31,7 +31,7 @@ func TestNewController(t *testing.T) {
 				assert.Greater(t, nextContId, c.id)
 
 				assert.ElementsMatch(t, []*Switch{}, c.switches)
-				assert.Equal(t, make(map[int64]*FlowTable), c.newFlowTables)
+				util.AssertEqualMaps(t, make(map[int64]*FlowTable), c.newFlowTables)
 			},
 		},
 		{
@@ -55,7 +55,7 @@ func TestNewController(t *testing.T) {
 
 				assert.Greater(t, nextContId, c.id)
 
-				assert.Equal(t, make(map[int64]*FlowTable), c.newFlowTables)
+				util.AssertEqualMaps(t, make(map[int64]*FlowTable), c.newFlowTables)
 				assert.ElementsMatch(t, []*Switch{
 					{
 						topoNode:   simple.Node(1),
@@ -86,7 +86,7 @@ func TestNewController(t *testing.T) {
 
 				assert.Greater(t, nextContId, c.ID())
 
-				assert.Equal(t, make(map[int64]*FlowTable), c.NewFlowTables())
+				util.AssertEqualMaps(t, make(map[int64]*FlowTable), c.NewFlowTables())
 				assert.ElementsMatch(t, []*Switch{
 					{
 						topoNode:   simple.Node(3),
@@ -118,9 +118,9 @@ func TestNewController(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := NewController(tt.args.switches)
 			if tt.wantErr == "" {
-				assert.Nil(t, err)
+				assert.NoError(t, err)
 			} else {
-				assert.NotNil(t, err)
+				assert.Error(t, err)
 				assert.Equal(t, tt.wantErr, err.Error())
 			}
 			// Assert the result
@@ -407,7 +407,7 @@ func TestController_AddNewFlowRules(t *testing.T) {
 			},
 			assertSetup: func(t *testing.T, c *Controller, initial *Controller) {
 				assert.ElementsMatch(t, initial.switches, c.switches)
-				assert.Equal(t, map[int64]*FlowTable{
+				util.AssertEqualMaps(t, map[int64]*FlowTable{
 					1: getMockFT3(),
 					2: getMockFT2(),
 				}, c.newFlowTables)
@@ -482,7 +482,7 @@ func TestController_AddNewFlowRules(t *testing.T) {
 			},
 			assertSetup: func(t *testing.T, c *Controller, initial *Controller) {
 				assert.ElementsMatch(t, initial.switches, c.switches)
-				assert.Equal(t, map[int64]*FlowTable{
+				util.AssertEqualMaps(t, map[int64]*FlowTable{
 					1: {
 						map[int64][]FlowRule{
 							0: {{10, 11, false}, {10, 12, true}},
@@ -507,9 +507,9 @@ func TestController_AddNewFlowRules(t *testing.T) {
 
 			err := c.AddNewFlowRules(tt.args.nodeId, tt.args.destHostId, tt.args.flowRules)
 			if tt.wantErr == "" {
-				assert.Nil(t, err)
+				assert.NoError(t, err)
 			} else {
-				assert.NotNil(t, err)
+				assert.Error(t, err)
 				assert.Equal(t, tt.wantErr, err.Error())
 				assert.EqualValues(t, &c, cInitial) // no side effects
 			}

@@ -33,7 +33,7 @@ func TestConvert_NewLink(t *testing.T) {
 			fromPort: -1,
 			toPort:   10,
 			assertSetup: func(t *testing.T, link *Link, err error) {
-				assert.Nil(t, err)
+				assert.NoError(t, err)
 				assert.NotNil(t, link)
 				assert.EqualValues(t, simpleEdge, link.topoEdge)
 				assert.Equal(t, int64(-1), link.fromPort)

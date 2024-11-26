@@ -34,7 +34,7 @@ func main() {
 	validTopos := util.ValidateTopologies(gs)
 
 	log.Printf("Generating DyNetKAT encoding for topology with id: %s...\n", NETWORK_ID)
-	topo, exists := validTopos[NETWORK_ID]
+	topo, exists := validTopos.Get(NETWORK_ID)
 
 	if !exists {
 		log.Fatalf("Topology with name '%s' is either invalid or does not exist\n", NETWORK_ID)

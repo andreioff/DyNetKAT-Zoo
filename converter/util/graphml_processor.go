@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 
+	om "github.com/wk8/go-ordered-map/v2"
 	"github.com/yaricom/goGraphML/graphml"
 	"gonum.org/v1/gonum/graph"
 	"gonum.org/v1/gonum/graph/simple"
@@ -66,10 +67,10 @@ func GraphMLToGraph(gml graphml.GraphML) (Graph, error) {
 	gmlGraph := gml.Graphs[0]
 	g := *simple.NewUndirectedGraph()
 
-	gmlNodeToGNode := map[string]graph.Node{}
+	gmlNodeToGNode := om.New[string, graph.Node]()
 	for _, gmlNode := range gmlGraph.Nodes {
 		newNode := g.NewNode()
-		gmlNodeToGNode[gmlNode.ID] = newNode
+		gmlNodeToGNode.Set(gmlNode.ID, newNode)
 		g.AddNode(newNode)
 	}
 
@@ -81,15 +82,16 @@ func GraphMLToGraph(gml graphml.GraphML) (Graph, error) {
 			continue
 		}
 
-		fromNode, toNode := gmlNodeToGNode[from], gmlNodeToGNode[to]
+		fromNode, _ := gmlNodeToGNode.Get(from)
+		toNode, _ := gmlNodeToGNode.Get(to)
 		g.SetEdge(g.NewEdge(fromNode, toNode))
 	}
 
 	return g, nil
 }
 
-func GraphMLsToGraphs(gmls []graphml.GraphML) map[string]Graph {
-	gs := make(map[string]Graph)
+func GraphMLsToGraphs(gmls []graphml.GraphML) om.OrderedMap[string, Graph] {
+	gs := *om.New[string, Graph]()
 	id := 0
 
 	for _, gml := range gmls {
@@ -103,14 +105,14 @@ func GraphMLsToGraphs(gmls []graphml.GraphML) map[string]Graph {
 			continue
 		}
 
-		if _, exists := gs[gml.Description]; exists {
+		if _, exists := gs.Get(gml.Description); exists {
 			name := fmt.Sprintf("%s#%d", gml.Description, id)
-			gs[name] = g
+			gs.Set(name, g)
 			id++
 			continue
 		}
 
-		gs[gml.Description] = g
+		gs.Set(gml.Description, g)
 	}
 	return gs
 }

@@ -3,6 +3,7 @@ package util
 import (
 	"log"
 
+	om "github.com/wk8/go-ordered-map/v2"
 	"gonum.org/v1/gonum/graph"
 	"gonum.org/v1/gonum/graph/simple"
 	"gonum.org/v1/gonum/graph/topo"
@@ -13,20 +14,23 @@ type (
 )
 
 // return the valid topologies in the given array
-func ValidateTopologies(tops map[string]Graph) map[string]Graph {
-	validTops := make(map[string]Graph)
+func ValidateTopologies(
+	tops om.OrderedMap[string, Graph],
+) om.OrderedMap[string, Graph] {
+	validTops := *om.New[string, Graph]()
 
-	for name, top := range tops {
+	for validTop := tops.Oldest(); validTop != nil; validTop = validTop.Next() {
+		name, top := validTop.Key, validTop.Value
 		err := ValidateTopology(top)
 		if err != nil {
 			log.Printf("%s: %s Skipping...", name, err)
 			continue
 		}
 
-		validTops[name] = top
+		validTops.Set(name, top)
 	}
 
-	log.Printf("Processed %d topologies. %d were invalid.", len(tops), len(tops)-len(validTops))
+	log.Printf("Processed %d topologies. %d were invalid.", tops.Len(), tops.Len()-validTops.Len())
 	return validTops
 }
 

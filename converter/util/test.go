@@ -7,34 +7,40 @@ import (
 
 	"github.com/pmezard/go-difflib/difflib"
 	"github.com/stretchr/testify/assert"
+	om "github.com/wk8/go-ordered-map/v2"
 )
 
-func AssertEqualMaps[K comparable, V interface{}](t *testing.T, expected, actual map[K]V) bool {
+func AssertEqualMaps[K comparable, V interface{}](
+	t *testing.T,
+	expected, actual *om.OrderedMap[K, V],
+) bool {
 	if expected == nil || actual == nil {
-		return assert.Fail(t, fmt.Sprintf("Nil arguments! Expected: %#v, Actual: %#v",
-			expected, actual))
+		return assert.Fail(
+			t,
+			fmt.Sprintf("Nil arguments! Expected: %#v, Actual: %#v", expected, actual),
+		)
 	}
 
-	if len(expected) != len(actual) {
+	if expected.Len() != actual.Len() {
 		return assert.Fail(t, fmt.Sprintf("Not equal (different lengths): \n"+
 			"expected: %d\n"+
-			"actual  : %d", len(expected), len(actual),
+			"actual  : %d", expected.Len(), actual.Len(),
 		))
 	}
 
-	for aKey, aValue := range actual {
-		eValue, exists := expected[aKey]
+	for aPair := actual.Oldest(); aPair != nil; aPair = aPair.Next() {
+		eValue, exists := expected.Get(aPair.Key)
 		if !exists {
 			return assert.Fail(t, fmt.Sprintf("Not equal: \n"+
 				"expected: %v\n"+
-				"actual  : %v%s", expected, actual, diff(expected, actual),
+				"actual  : %v%s", expected, actual, diff(*expected, *actual),
 			))
 		}
 
-		if isList(aValue) {
-			assert.ElementsMatch(t, eValue, aValue)
+		if isList(aPair.Value) {
+			assert.ElementsMatch(t, eValue, aPair.Value)
 		} else {
-			assert.Equal(t, eValue, aValue)
+			assert.Equal(t, eValue, aPair.Value)
 		}
 	}
 
@@ -51,7 +57,7 @@ func isList(list interface{}) bool {
 }
 
 // copied and adapted from github.com/stretchr/testify/assert
-func diff[K comparable, V interface{}](expected, actual map[K]V) string {
+func diff[K comparable, V interface{}](expected, actual om.OrderedMap[K, V]) string {
 	e, a := fmt.Sprintf("%v", expected), fmt.Sprintf("%v", actual)
 
 	diff, _ := difflib.GetUnifiedDiffString(difflib.UnifiedDiff{

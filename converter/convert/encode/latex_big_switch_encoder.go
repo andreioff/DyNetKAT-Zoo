@@ -105,13 +105,13 @@ func (f LatexBigSwitchEncoder) encodeLinkTerm(ei EncodingInfo) string {
 		return fr.IsLink()
 	}
 
-	for _, ft := range ei.usedSwitchFTs {
-		linksFt.Extend(ft.Filter(isLinkPred))
+	for pair := ei.usedSwitchFTs.Oldest(); pair != nil; pair = pair.Next() {
+		linksFt.Extend(pair.Value.Filter(isLinkPred))
 	}
 
 	for _, c := range ei.usedContFTs {
-		for _, ft := range c {
-			linksFt.Extend(ft.Filter(isLinkPred))
+		for pair := c.Oldest(); pair != nil; pair = pair.Next() {
+			linksFt.Extend(pair.Value.Filter(isLinkPred))
 		}
 	}
 
@@ -129,7 +129,7 @@ func (f LatexBigSwitchEncoder) encodeLinkTerm(ei EncodingInfo) string {
 func (f LatexBigSwitchEncoder) encodeBigSwitchTerm(
 	ei EncodingInfo,
 ) string {
-	n := len(ei.usedSwitchFTs)
+	n := ei.usedSwitchFTs.Len()
 
 	bigSwitchName := f.encodeBigSwitchName(VAR_BASE_NAME, n, -1, "")
 	packetProcPolicy := f.encodePacketProcPolicy(n, bigSwitchName)
@@ -239,13 +239,15 @@ func (f LatexBigSwitchEncoder) encodeSwitchPolicyComm(
 	ei EncodingInfo,
 ) []string {
 	commStrs := []string{}
-	for swId := range ei.usedSwitchFTs {
+	for pair := ei.usedSwitchFTs.Oldest(); pair != nil; pair = pair.Next() {
+		swId := pair.Key
+
 		_, exists := ei.FindNewFT(swId)
 		if !exists {
 			continue
 		}
 
-		swIndex := ei.nodeIdToIndex[swId]
+		swIndex, _ := ei.nodeIdToIndex.Get(swId)
 		newSwName := f.encodeSwitchName(swIndex, true)
 		commStr := fmt.Sprintf(
 			"%s%d %s %s %s %s",
@@ -254,7 +256,7 @@ func (f LatexBigSwitchEncoder) encodeSwitchPolicyComm(
 			f.sym.RECV,
 			newSwName,
 			f.sym.SEQ,
-			f.encodeBigSwitchName(VAR_BASE_NAME, len(ei.usedSwitchFTs), swIndex, newSwName),
+			f.encodeBigSwitchName(VAR_BASE_NAME, ei.usedSwitchFTs.Len(), swIndex, newSwName),
 		)
 
 		commStrs = append(commStrs, commStr)
@@ -284,7 +286,7 @@ func (f LatexBigSwitchEncoder) encodeSDNTerm(
 ) string {
 	var sb strings.Builder
 
-	sb.WriteString(f.encodeBigSwitchName(SW_BASE_NAME, len(ei.usedSwitchFTs), -1, ""))
+	sb.WriteString(f.encodeBigSwitchName(SW_BASE_NAME, ei.usedSwitchFTs.Len(), -1, ""))
 
 	for i := range ei.usedContFTs {
 		sb.WriteString(fmt.Sprintf("%s %s%d", f.sym.PAR, CONTROLLER_BASE_NAME, i))
@@ -312,8 +314,9 @@ func (f LatexBigSwitchEncoder) encodeController(
 	fmtCommStrs := []string{}
 	cName := fmt.Sprintf("%s%d", CONTROLLER_BASE_NAME, cIndex)
 
-	for swId := range ei.usedContFTs[cIndex] {
-		commStr := f.encodeControllerPolicyComm(cName, ei.nodeIdToIndex[swId])
+	for pair := ei.usedContFTs[cIndex].Oldest(); pair != nil; pair = pair.Next() {
+		swIndex, _ := ei.nodeIdToIndex.Get(pair.Key)
+		commStr := f.encodeControllerPolicyComm(cName, swIndex)
 		fmtCommStrs = append(fmtCommStrs, commStr)
 	}
 
@@ -359,18 +362,20 @@ func (f LatexBigSwitchEncoder) getActivePiPoComm(
 	}
 
 	commStrs := []string{}
-	for swId := range ei.usedSwitchFTs {
+	for pair := ei.usedSwitchFTs.Oldest(); pair != nil; pair = pair.Next() {
+		swId := pair.Key
+
 		_, exists := ei.FindNewFT(swId)
 		if !exists {
 			continue
 		}
 
-		swIndex := ei.nodeIdToIndex[swId]
+		swIndex, _ := ei.nodeIdToIndex.Get(swId)
 		newSwName := f.encodeSwitchName(swIndex, true)
 		if forSwitch {
 			termName = f.encodeBigSwitchName(
 				VAR_BASE_NAME,
-				len(ei.usedSwitchFTs),
+				ei.usedSwitchFTs.Len(),
 				swIndex,
 				newSwName,
 			)

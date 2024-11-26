@@ -1,9 +1,7 @@
 package convert
 
 import (
-	"maps"
-	"slices"
-
+	om "github.com/wk8/go-ordered-map/v2"
 	"gonum.org/v1/gonum/graph"
 	"gonum.org/v1/gonum/graph/path"
 	"utwente.nl/topology-to-dynetkat-coverter/util"
@@ -11,10 +9,10 @@ import (
 
 type Network struct {
 	topology      util.Graph
-	shortestPaths map[util.I64Tup][]*Switch // maps a tuple of topology node ids to a switch path
+	shortestPaths om.OrderedMap[util.I64Tup, []*Switch] // maps a tuple of topology node ids to a switch path
 
 	switches   []*Switch
-	nodeIdToSw map[int64]*Switch
+	nodeIdToSw om.OrderedMap[int64, *Switch]
 
 	controllers []*Controller
 	hosts       []*Host
@@ -34,9 +32,14 @@ func NewNetwork(topo util.Graph) (*Network, error) {
 		return &Network{}, err
 	}
 
+	shortesPaths, err := computeShortestPaths(topo, switches)
+	if err != nil {
+		return &Network{}, err
+	}
+
 	return &Network{
 		topology:      topo,
-		shortestPaths: computeShortestPaths(topo, switches),
+		shortestPaths: shortesPaths,
 		switches:      switches,
 		nodeIdToSw:    mapNodeToSwitch(switches),
 		portNr:        portNr,
@@ -61,7 +64,7 @@ func (n *Network) Controllers() []*Controller {
 }
 
 func (n *Network) GetSwitch(nodeId int64) (*Switch, error) {
-	sw, exists := n.nodeIdToSw[nodeId]
+	sw, exists := n.nodeIdToSw.Get(nodeId)
 	if !exists {
 		return &Switch{}, util.NewError(util.ErrNoSwitchWithNodeId, nodeId)
 	}
@@ -106,13 +109,17 @@ func (n *Network) pickRandomSwitches(picksNr uint) ([]*Switch, error) {
 	if len(n.switches) == 0 {
 		return []*Switch{}, util.NewError(util.ErrNetworkHasNoSwitches)
 	}
-	nodeIds := slices.Collect(maps.Keys(n.nodeIdToSw))
+	nodeIds := util.CollectKeys(n.nodeIdToSw)
 
 	randIdPicks := util.RandomFromArrayWithReplc(nodeIds, picksNr)
 
 	randSws := []*Switch{}
 	for _, nodeId := range randIdPicks {
-		randSws = append(randSws, n.nodeIdToSw[nodeId])
+		sw, exists := n.nodeIdToSw.Get(nodeId)
+		if !exists {
+			return []*Switch{}, util.NewError(util.ErrNoSwitchWithNodeId, nodeId)
+		}
+		randSws = append(randSws, sw)
 	}
 
 	return randSws, nil
@@ -131,7 +138,8 @@ func (n *Network) populateFlowTables(h1, h2 *Host) error {
 		return err
 	}
 
-	for nodeId, frs := range entries {
+	for pair := entries.Oldest(); pair != nil; pair = pair.Next() {
+		nodeId, frs := pair.Key, pair.Value
 		for _, fr := range frs {
 			sw, err := n.GetSwitch(nodeId)
 			if err != nil {
@@ -153,20 +161,21 @@ func (n *Network) GetFlowRulesForSwitchPath(
 	destSw *Switch,
 	inPortSrcSw int64,
 	outPortDestSw int64,
-) (map[int64][]FlowRule, error) {
+) (om.OrderedMap[int64, []FlowRule], error) {
 	switch {
 	case srcSw == nil:
-		return make(map[int64][]FlowRule), util.NewError(util.ErrNilArgument, "srcSw")
+		return *om.New[int64, []FlowRule](), util.NewError(util.ErrNilArgument, "srcSw")
 	case destSw == nil:
-		return make(map[int64][]FlowRule), util.NewError(util.ErrNilArgument, "destSw")
+		return *om.New[int64, []FlowRule](), util.NewError(util.ErrNilArgument, "destSw")
 	}
 
-	path, exists := n.shortestPaths[util.NewI64Tup(srcSw.topoNode.ID(), destSw.topoNode.ID())]
+	srcDestTup := util.NewI64Tup(srcSw.topoNode.ID(), destSw.topoNode.ID())
+	path, exists := n.shortestPaths.Get(srcDestTup)
 	if !exists {
-		return make(map[int64][]FlowRule), util.NewError(util.ErrNoPathBetweenSwitches)
+		return *om.New[int64, []FlowRule](), util.NewError(util.ErrNoPathBetweenSwitches)
 	}
 
-	entries := make(map[int64][]FlowRule)
+	entries := *om.New[int64, []FlowRule]()
 	receivingPort := inPortSrcSw
 
 	for i := range len(path) - 1 {
@@ -174,18 +183,18 @@ func (n *Network) GetFlowRulesForSwitchPath(
 		nextSwId := path[i+1].topoNode.ID()
 		fromPort, toPort, err := currSw.GetLinkPorts(nextSwId)
 		if err != nil {
-			return make(map[int64][]FlowRule), err
+			return *om.New[int64, []FlowRule](), err
 		}
 
 		innerFr := NewFlowRule(receivingPort, fromPort, false)
 		linkFr := NewFlowRule(fromPort, toPort, true)
-		entries[currSw.topoNode.ID()] = []FlowRule{innerFr, linkFr}
+		entries.Set(currSw.topoNode.ID(), []FlowRule{innerFr, linkFr})
 
 		receivingPort = toPort
 	}
 
 	innerFr := NewFlowRule(receivingPort, outPortDestSw, false)
-	entries[destSw.topoNode.ID()] = []FlowRule{innerFr}
+	entries.Set(destSw.topoNode.ID(), []FlowRule{innerFr})
 
 	return entries, nil
 }
@@ -231,7 +240,7 @@ func (n *Network) AddControllers(controllersNr uint) error {
 		return util.NewError(util.ErrMoreContsThanSwitches)
 	}
 
-	nodeIds := slices.Collect(maps.Keys(n.nodeIdToSw))
+	nodeIds := util.CollectKeys(n.nodeIdToSw)
 	randOrder, err := util.RandomFromArray(nodeIds, uint(len(nodeIds)))
 	if err != nil {
 		return err
@@ -241,7 +250,11 @@ func (n *Network) AddControllers(controllersNr uint) error {
 	for _, slice := range slices {
 		switches := []*Switch{}
 		for _, nodeId := range slice {
-			switches = append(switches, n.nodeIdToSw[nodeId])
+			sw, exists := n.nodeIdToSw.Get(nodeId)
+			if !exists {
+				return util.NewError(util.ErrNoSwitchWithNodeId, nodeId)
+			}
+			switches = append(switches, sw)
 		}
 
 		c, err := NewController(switches)
@@ -255,11 +268,11 @@ func (n *Network) AddControllers(controllersNr uint) error {
 	return nil
 }
 
-func mapNodeToSwitch(switches []*Switch) map[int64]*Switch {
-	nodeIdToSwitch := make(map[int64]*Switch, len(switches))
+func mapNodeToSwitch(switches []*Switch) om.OrderedMap[int64, *Switch] {
+	nodeIdToSwitch := *om.New[int64, *Switch](len(switches))
 
 	for _, sw := range switches {
-		nodeIdToSwitch[sw.topoNode.ID()] = sw
+		nodeIdToSwitch.Set(sw.topoNode.ID(), sw)
 	}
 
 	return nodeIdToSwitch
@@ -267,7 +280,7 @@ func mapNodeToSwitch(switches []*Switch) map[int64]*Switch {
 
 func makeSwitchesFromTopology(
 	topo util.Graph,
-	edgeToLink map[util.I64Tup]*Link,
+	edgeToLink *om.OrderedMap[util.I64Tup, *Link],
 ) ([]*Switch, error) {
 	switches := []*Switch{}
 
@@ -289,21 +302,21 @@ func makeSwitchesFromTopology(
 	return switches, nil
 }
 
-func makeLinks(topo util.Graph, portNr *int64) (map[util.I64Tup]*Link, error) {
+func makeLinks(topo util.Graph, portNr *int64) (*om.OrderedMap[util.I64Tup, *Link], error) {
 	if portNr == nil {
-		return make(map[util.I64Tup]*Link), util.NewError(util.ErrNilArgument, "portNr")
+		return om.New[util.I64Tup, *Link](), util.NewError(util.ErrNilArgument, "portNr")
 	}
 
-	edgeTolink := make(map[util.I64Tup]*Link)
+	edgeTolink := om.New[util.I64Tup, *Link]()
 	iter := topo.Edges()
 	for iter.Next() {
 		newLink, err := NewLink(iter.Edge(), *portNr, *portNr+1)
 		if err != nil {
-			return make(map[util.I64Tup]*Link), err
+			return om.New[util.I64Tup, *Link](), err
 		}
 
 		edgeId := util.NewI64Tup(iter.Edge().From().ID(), iter.Edge().To().ID())
-		edgeTolink[edgeId] = newLink
+		edgeTolink.Set(edgeId, newLink)
 		*portNr += 2
 	}
 	return edgeTolink, nil
@@ -312,7 +325,7 @@ func makeLinks(topo util.Graph, portNr *int64) (map[util.I64Tup]*Link, error) {
 func getSwitchLinks(
 	topo util.Graph,
 	node graph.Node,
-	edgeToLink map[util.I64Tup]*Link,
+	edgeToLink *om.OrderedMap[util.I64Tup, *Link],
 ) ([]*Link, error) {
 	incidentEdges, err := util.GetIncidentEdges(topo, node)
 	if err != nil {
@@ -322,7 +335,7 @@ func getSwitchLinks(
 	links := []*Link{}
 	for _, edge := range incidentEdges {
 		edgeId := util.NewI64Tup(edge.From().ID(), edge.To().ID())
-		link, exists := edgeToLink[edgeId]
+		link, exists := edgeToLink.Get(edgeId)
 		if !exists || link == nil {
 			return []*Link{}, util.NewError(util.ErrEdgeNotMappedToLink)
 		}
@@ -332,18 +345,28 @@ func getSwitchLinks(
 	return links, nil
 }
 
-func nodePathToSwitchPath(path []graph.Node, nodeToSwitch map[int64]*Switch) []*Switch {
+func nodePathToSwitchPath(
+	path []graph.Node,
+	nodeToSwitch om.OrderedMap[int64, *Switch],
+) ([]*Switch, error) {
 	switchPath := []*Switch{}
 	for _, node := range path {
-		switchPath = append(switchPath, nodeToSwitch[node.ID()])
+		sw, exists := nodeToSwitch.Get(node.ID())
+		if !exists {
+			return []*Switch{}, util.NewError(util.ErrNoSwitchWithNodeId, node.ID())
+		}
+		switchPath = append(switchPath, sw)
 	}
-	return switchPath
+	return switchPath, nil
 }
 
-func computeShortestPaths(topo util.Graph, switches []*Switch) map[util.I64Tup][]*Switch {
+func computeShortestPaths(
+	topo util.Graph,
+	switches []*Switch,
+) (om.OrderedMap[util.I64Tup, []*Switch], error) {
 	nodePaths := path.DijkstraAllPaths(&topo)
 	nodeToSwitch := mapNodeToSwitch(switches)
-	switchPaths := make(map[util.I64Tup][]*Switch)
+	switchPaths := *om.New[util.I64Tup, []*Switch]()
 
 	for i := range len(switches) {
 		sw1Id := switches[i].topoNode.ID()
@@ -351,12 +374,15 @@ func computeShortestPaths(topo util.Graph, switches []*Switch) map[util.I64Tup][
 		for j := range len(switches) {
 			sw2Id := switches[j].topoNode.ID()
 			nodePath, _, _ := nodePaths.Between(sw1Id, sw2Id)
-			switchPaths[util.NewI64Tup(sw1Id, sw2Id)] = nodePathToSwitchPath(
-				nodePath,
-				nodeToSwitch,
-			)
+
+			swPath, err := nodePathToSwitchPath(nodePath, nodeToSwitch)
+			if err != nil {
+				return *om.New[util.I64Tup, []*Switch](), err
+			}
+
+			switchPaths.Set(util.NewI64Tup(sw1Id, sw2Id), swPath)
 		}
 	}
 
-	return switchPaths
+	return switchPaths, nil
 }

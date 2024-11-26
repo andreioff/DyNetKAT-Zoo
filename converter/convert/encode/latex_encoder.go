@@ -56,15 +56,17 @@ func (f LatexEncoder) Encode(ei EncodingInfo) string {
 func (f LatexEncoder) encodeSwitches(ei EncodingInfo) string {
 	var sb strings.Builder
 
-	for swId, ft := range ei.usedSwitchFTs {
+	for pair := ei.usedSwitchFTs.Oldest(); pair != nil; pair = pair.Next() {
+		swId, ft := pair.Key, pair.Value
 		newFT, willReceiveUpdate := ei.FindNewFT(swId)
+		swIndex, _ := ei.nodeIdToIndex.Get(swId)
 
-		swStr := f.encodeSwitch(ei.nodeIdToIndex[swId], ft, willReceiveUpdate)
+		swStr := f.encodeSwitch(swIndex, ft, willReceiveUpdate)
 		sb.WriteString(swStr)
 		sb.WriteString(NEW_LN)
 
 		if willReceiveUpdate {
-			updateSwStr := f.encodeSwitchNewFT(ei.nodeIdToIndex[swId], newFT)
+			updateSwStr := f.encodeSwitchNewFT(swIndex, newFT)
 			sb.WriteString(updateSwStr)
 			sb.WriteString(NEW_LN)
 		}

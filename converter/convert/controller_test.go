@@ -5,12 +5,16 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	om "github.com/wk8/go-ordered-map/v2"
 	"gonum.org/v1/gonum/graph/simple"
 
 	"utwente.nl/topology-to-dynetkat-coverter/util"
 )
 
 func TestNewController(t *testing.T) {
+	type K = int64
+	type V = *FlowTable
+
 	type args struct {
 		switches []*Switch
 	}
@@ -31,7 +35,7 @@ func TestNewController(t *testing.T) {
 				assert.Greater(t, nextContId, c.id)
 
 				assert.ElementsMatch(t, []*Switch{}, c.switches)
-				util.AssertEqualMaps(t, make(map[int64]*FlowTable), c.newFlowTables)
+				util.AssertEqualMaps(t, om.New[K, V](), &c.newFlowTables)
 			},
 		},
 		{
@@ -55,7 +59,7 @@ func TestNewController(t *testing.T) {
 
 				assert.Greater(t, nextContId, c.id)
 
-				util.AssertEqualMaps(t, make(map[int64]*FlowTable), c.newFlowTables)
+				util.AssertEqualMaps(t, om.New[K, V](), &c.newFlowTables)
 				assert.ElementsMatch(t, []*Switch{
 					{
 						topoNode:   simple.Node(1),
@@ -86,7 +90,7 @@ func TestNewController(t *testing.T) {
 
 				assert.Greater(t, nextContId, c.ID())
 
-				util.AssertEqualMaps(t, make(map[int64]*FlowTable), c.NewFlowTables())
+				util.AssertEqualMaps(t, om.New[K, V](), c.NewFlowTables())
 				assert.ElementsMatch(t, []*Switch{
 					{
 						topoNode:   simple.Node(3),
@@ -132,10 +136,13 @@ func TestNewController(t *testing.T) {
 }
 
 func TestController_FindSwitch(t *testing.T) {
+	type K = int64
+	type V = *FlowTable
+
 	type fields struct {
 		id            int64
 		switches      []*Switch
-		newFlowTables map[int64]*FlowTable
+		newFlowTables om.OrderedMap[K, V]
 	}
 	type args struct {
 		nodeId int64
@@ -151,7 +158,7 @@ func TestController_FindSwitch(t *testing.T) {
 			fields: fields{
 				id:            1,
 				switches:      []*Switch{},
-				newFlowTables: make(map[int64]*FlowTable),
+				newFlowTables: *om.New[K, V](),
 			},
 			args: args{
 				nodeId: -1,
@@ -174,7 +181,7 @@ func TestController_FindSwitch(t *testing.T) {
 						flowTable:  &FlowTable{},
 					},
 				},
-				newFlowTables: make(map[int64]*FlowTable),
+				newFlowTables: *om.New[K, V](),
 			},
 			args: args{
 				nodeId: 3,
@@ -202,7 +209,7 @@ func TestController_FindSwitch(t *testing.T) {
 						flowTable:  &FlowTable{},
 					},
 				},
-				newFlowTables: make(map[int64]*FlowTable),
+				newFlowTables: *om.New[K, V](),
 			},
 			args: args{
 				nodeId: 14,
@@ -303,10 +310,22 @@ func Test_newEntriesExist(t *testing.T) {
 }
 
 func TestController_AddNewFlowRules(t *testing.T) {
+	type K = int64
+	type V = *FlowTable
+	pair := func(key K, value V) om.Pair[K, V] {
+		return om.Pair[K, V]{
+			Key:   key,
+			Value: value,
+		}
+	}
+	newMap := func(data []om.Pair[K, V]) *om.OrderedMap[K, V] {
+		return om.New[K, V](om.WithInitialData(data...))
+	}
+
 	type fields struct {
 		id            int64
 		switches      []*Switch
-		newFlowTables map[int64]*FlowTable
+		newFlowTables om.OrderedMap[K, V]
 	}
 	type args struct {
 		nodeId     int64
@@ -338,7 +357,7 @@ func TestController_AddNewFlowRules(t *testing.T) {
 						links:      []*Link{},
 					},
 				},
-				newFlowTables: make(map[int64]*FlowTable),
+				newFlowTables: *om.New[K, V](),
 			},
 			args: args{
 				nodeId:     -1,
@@ -365,9 +384,9 @@ func TestController_AddNewFlowRules(t *testing.T) {
 						links:      []*Link{},
 					},
 				},
-				newFlowTables: map[int64]*FlowTable{
-					2: getMockFT2(),
-				},
+				newFlowTables: *newMap([]om.Pair[K, V]{
+					pair(2, getMockFT2()),
+				}),
 			},
 			args: args{
 				nodeId:     1,
@@ -396,9 +415,9 @@ func TestController_AddNewFlowRules(t *testing.T) {
 						links:      []*Link{},
 					},
 				},
-				newFlowTables: map[int64]*FlowTable{
-					2: getMockFT2(),
-				},
+				newFlowTables: *newMap([]om.Pair[K, V]{
+					pair(2, getMockFT2()),
+				}),
 			},
 			args: args{
 				nodeId:     1,
@@ -407,10 +426,14 @@ func TestController_AddNewFlowRules(t *testing.T) {
 			},
 			assertSetup: func(t *testing.T, c *Controller, initial *Controller) {
 				assert.ElementsMatch(t, initial.switches, c.switches)
-				util.AssertEqualMaps(t, map[int64]*FlowTable{
-					1: getMockFT3(),
-					2: getMockFT2(),
-				}, c.newFlowTables)
+				util.AssertEqualMaps(
+					t,
+					newMap([]om.Pair[K, V]{
+						pair(1, getMockFT3()),
+						pair(2, getMockFT2()),
+					}),
+					&c.newFlowTables,
+				)
 			},
 		},
 		{
@@ -431,10 +454,10 @@ func TestController_AddNewFlowRules(t *testing.T) {
 						links:      []*Link{},
 					},
 				},
-				newFlowTables: map[int64]*FlowTable{
-					1: getMockFT3(),
-					2: getMockFT2(),
-				},
+				newFlowTables: *newMap([]om.Pair[K, V]{
+					pair(1, getMockFT3()),
+					pair(2, getMockFT2()),
+				}),
 			},
 			args: args{
 				nodeId:     1,
@@ -463,17 +486,10 @@ func TestController_AddNewFlowRules(t *testing.T) {
 						links:      []*Link{},
 					},
 				},
-				newFlowTables: map[int64]*FlowTable{
-					1: {
-						map[int64][]FlowRule{
-							0: {{10, 11, false}, {10, 12, true}},
-							1: {{13, 14, false}},
-							3: {{15, 16, false}, {15, 17, true}},
-							5: {{18, 19, false}},
-						},
-					},
-					2: getMockFT2(),
-				},
+				newFlowTables: *newMap([]om.Pair[K, V]{
+					pair(1, getMockFT1()),
+					pair(2, getMockFT2()),
+				}),
 			},
 			args: args{
 				nodeId:     1,
@@ -482,17 +498,25 @@ func TestController_AddNewFlowRules(t *testing.T) {
 			},
 			assertSetup: func(t *testing.T, c *Controller, initial *Controller) {
 				assert.ElementsMatch(t, initial.switches, c.switches)
-				util.AssertEqualMaps(t, map[int64]*FlowTable{
-					1: {
-						map[int64][]FlowRule{
-							0: {{10, 11, false}, {10, 12, true}},
-							1: {{13, 14, false}},
-							3: {{15, 16, false}, {15, 17, true}, {15, 20, false}, {21, 22, true}},
-							5: {{18, 19, false}},
+				util.AssertEqualMaps(t, newMap([]om.Pair[K, V]{
+					pair(1, &FlowTable{
+						*ftNewMap([]om.Pair[ftKeyT, ftValT]{
+							ftPair(0, ftValT{
+								{10, 11, false},
+								{10, 12, true},
+							}),
+							ftPair(1, ftValT{{13, 14, false}}),
+							ftPair(3, ftValT{
+								{15, 16, false},
+								{15, 17, true},
+								{15, 20, false},
+								{21, 22, true},
+							}),
 						},
-					},
-					2: getMockFT2(),
-				}, c.newFlowTables)
+						),
+					}),
+					pair(2, getMockFT2()),
+				}), &c.newFlowTables)
 			},
 		},
 	}

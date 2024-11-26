@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	om "github.com/wk8/go-ordered-map/v2"
 	"gonum.org/v1/gonum/graph"
 	"gonum.org/v1/gonum/graph/simple"
 	"utwente.nl/topology-to-dynetkat-coverter/util"
@@ -18,7 +19,7 @@ var (
 	mockC     *Controller = &Controller{
 		id:            1,
 		switches:      []*Switch{},
-		newFlowTables: make(map[int64]*FlowTable),
+		newFlowTables: *om.New[int64, *FlowTable](),
 	}
 )
 

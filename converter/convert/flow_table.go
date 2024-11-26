@@ -2,6 +2,8 @@ package convert
 
 import (
 	"strconv"
+
+	om "github.com/wk8/go-ordered-map/v2"
 )
 
 const (
@@ -9,21 +11,26 @@ const (
 	PORT_STRING = "port"
 )
 
+type (
+	ftKeyT = int64
+	ftValT = []FlowRule
+)
+
 type FlowTable struct {
-	entries map[int64][]FlowRule // maps host destination id to corresponding flow rules
+	entries om.OrderedMap[ftKeyT, ftValT] // maps host destination id to corresponding flow rules
 }
 
-func (ft *FlowTable) Entries() map[int64][]FlowRule {
-	return ft.entries
+func (ft *FlowTable) Entries() *om.OrderedMap[ftKeyT, ftValT] {
+	return &ft.entries
 }
 
-func (ft *FlowTable) setEntries(newEntries map[int64][]FlowRule) {
+func (ft *FlowTable) setEntries(newEntries om.OrderedMap[ftKeyT, ftValT]) {
 	ft.entries = newEntries
 }
 
 func NewFlowTable() *FlowTable {
 	return &FlowTable{
-		entries: make(map[int64][]FlowRule),
+		entries: *om.New[ftKeyT, ftValT](),
 	}
 }
 
@@ -33,16 +40,23 @@ func (ft *FlowTable) AddEntry(destHostId int64, fr FlowRule) {
 		return
 	}
 
-	ft.entries[destHostId] = append(ft.entries[destHostId], fr)
+	destFrsPair := ft.entries.GetPair(destHostId)
+	if destFrsPair == nil {
+		ft.entries.Set(destHostId, []FlowRule{fr})
+		return
+	}
+
+	destFrsPair.Value = append(destFrsPair.Value, fr)
 }
 
-func (ft *FlowTable) hasEntry(hostId int64, fr FlowRule) bool {
-	if _, exists := ft.entries[hostId]; !exists {
+func (ft *FlowTable) hasEntry(hostId int64, target FlowRule) bool {
+	frs, exists := ft.entries.Get(hostId)
+	if !exists {
 		return false
 	}
 
-	for _, v := range ft.entries[hostId] {
-		if v.IsEqual(fr) {
+	for _, fr := range frs {
+		if fr.IsEqual(target) {
 			return true
 		}
 	}
@@ -56,9 +70,10 @@ the flow rules of the current flow table that satisfy
 the given predicate.
 */
 func (ft *FlowTable) Filter(pred func(FlowRule) bool) *FlowTable {
-	entries := make(map[int64][]FlowRule)
+	entries := *om.New[ftKeyT, ftValT]()
 
-	for hostId, frs := range ft.entries {
+	for pair := ft.entries.Oldest(); pair != nil; pair = pair.Next() {
+		hostId, frs := pair.Key, pair.Value
 		newFrs := []FlowRule{}
 		for _, fr := range frs {
 			if pred(fr) {
@@ -67,7 +82,7 @@ func (ft *FlowTable) Filter(pred func(FlowRule) bool) *FlowTable {
 		}
 
 		if len(newFrs) > 0 {
-			entries[hostId] = newFrs
+			entries.Set(hostId, newFrs)
 		}
 	}
 
@@ -83,7 +98,8 @@ func (ft *FlowTable) Extend(otherFt *FlowTable) {
 		return
 	}
 
-	for hostId, frs := range otherFt.entries {
+	for pair := otherFt.entries.Oldest(); pair != nil; pair = pair.Next() {
+		hostId, frs := pair.Key, pair.Value
 		for _, fr := range frs {
 			ft.AddEntry(hostId, fr)
 		}
@@ -93,7 +109,8 @@ func (ft *FlowTable) Extend(otherFt *FlowTable) {
 func (ft *FlowTable) ToNetKATPolicies() []*SimpleNetKATPolicy {
 	policies := []*SimpleNetKATPolicy{}
 
-	for destHostId, frs := range ft.entries {
+	for pair := ft.entries.Oldest(); pair != nil; pair = pair.Next() {
+		destHostId, frs := pair.Key, pair.Value
 		for _, fr := range frs {
 			policy := NewSimpleNetKATPolicy()
 			policy.AddTest(DST_STRING, strconv.FormatInt(destHostId, 10))
@@ -109,13 +126,14 @@ func (ft *FlowTable) ToNetKATPolicies() []*SimpleNetKATPolicy {
 // returns a deep copy of this flow table
 func (ft *FlowTable) Copy() *FlowTable {
 	newFt := NewFlowTable()
-	entries := make(map[int64][]FlowRule)
+	entries := *om.New[ftKeyT, ftValT]()
 
-	for hostId, frs := range ft.entries {
+	for pair := ft.entries.Oldest(); pair != nil; pair = pair.Next() {
+		hostId, frs := pair.Key, pair.Value
 		newFrs := make([]FlowRule, len(frs))
 		copy(newFrs, frs)
 
-		entries[hostId] = newFrs
+		entries.Set(hostId, newFrs)
 	}
 	newFt.setEntries(entries)
 

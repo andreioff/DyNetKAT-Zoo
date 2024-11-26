@@ -1,21 +1,22 @@
 package encode
 
 import (
+	om "github.com/wk8/go-ordered-map/v2"
 	"utwente.nl/topology-to-dynetkat-coverter/convert"
 	"utwente.nl/topology-to-dynetkat-coverter/util"
 )
 
 type EncodingInfo struct {
-	nodeIdToIndex map[int64]int                  // maps switch node id to index
-	usedSwitchFTs map[int64]*convert.FlowTable   // maps switch node id to flow table of switch
-	usedContFTs   []map[int64]*convert.FlowTable // maps switch node id to new flow table
+	nodeIdToIndex om.OrderedMap[int64, int]                  // maps switch node id to index
+	usedSwitchFTs om.OrderedMap[int64, *convert.FlowTable]   // maps switch node id to flow table of switch
+	usedContFTs   []om.OrderedMap[int64, *convert.FlowTable] // maps switch node id to new flow table
 }
 
 func NewEncodingInfo(n *convert.Network) (EncodingInfo, error) {
 	usedSwitchFTs := getUsedSwitchesFTs(n.Switches())
 	usedControllerFTs := getUsedControllers(n.Controllers())
 
-	if len(usedSwitchFTs) == 0 || len(usedControllerFTs) == 0 {
+	if usedSwitchFTs.Len() == 0 || len(usedControllerFTs) == 0 {
 		return EncodingInfo{}, util.NewError(util.ErrNoSwsOrContsUsed)
 	}
 
@@ -28,44 +29,46 @@ func NewEncodingInfo(n *convert.Network) (EncodingInfo, error) {
 
 func getNodeIdToIndex(
 	switches []*convert.Switch,
-	usedSwitchFTs map[int64]*convert.FlowTable,
-) map[int64]int {
-	nodeIdToIndex := make(map[int64]int)
+	usedSwitchFTs om.OrderedMap[int64, *convert.FlowTable],
+) om.OrderedMap[int64, int] {
+	nodeIdToIndex := *om.New[int64, int]()
 	index := 0
 	for _, sw := range switches {
-		_, exists := usedSwitchFTs[sw.TopoNode().ID()]
+		_, exists := usedSwitchFTs.Get(sw.TopoNode().ID())
 		if exists {
-			nodeIdToIndex[sw.TopoNode().ID()] = index
+			nodeIdToIndex.Set(sw.TopoNode().ID(), index)
 			index++
 		}
 	}
 	return nodeIdToIndex
 }
 
-func getUsedSwitchesFTs(switches []*convert.Switch) map[int64]*convert.FlowTable {
-	usedSwitchFTs := make(map[int64]*convert.FlowTable)
+func getUsedSwitchesFTs(switches []*convert.Switch) om.OrderedMap[int64, *convert.FlowTable] {
+	usedSwitchFTs := *om.New[int64, *convert.FlowTable]()
 
 	for _, sw := range switches {
 		c := sw.Controller()
 		willReceiveUpdate := false
 		if c != nil {
-			_, willReceiveUpdate = c.NewFlowTables()[sw.TopoNode().ID()]
+			_, willReceiveUpdate = c.NewFlowTables().Get(sw.TopoNode().ID())
 		}
 
-		if len(sw.FlowTable().Entries()) > 0 || willReceiveUpdate {
-			usedSwitchFTs[sw.TopoNode().ID()] = sw.FlowTable()
+		if sw.FlowTable().Entries().Len() > 0 || willReceiveUpdate {
+			usedSwitchFTs.Set(sw.TopoNode().ID(), sw.FlowTable())
 		}
 	}
 
 	return usedSwitchFTs
 }
 
-func getUsedControllers(controllers []*convert.Controller) []map[int64]*convert.FlowTable {
-	usedControllerFTs := []map[int64]*convert.FlowTable{}
+func getUsedControllers(
+	controllers []*convert.Controller,
+) []om.OrderedMap[int64, *convert.FlowTable] {
+	usedControllerFTs := []om.OrderedMap[int64, *convert.FlowTable]{}
 
 	for _, c := range controllers {
-		if len(c.NewFlowTables()) > 0 {
-			usedControllerFTs = append(usedControllerFTs, c.NewFlowTables())
+		if c.NewFlowTables().Len() > 0 {
+			usedControllerFTs = append(usedControllerFTs, *c.NewFlowTables())
 		}
 	}
 
@@ -74,7 +77,7 @@ func getUsedControllers(controllers []*convert.Controller) []map[int64]*convert.
 
 func (ei EncodingInfo) FindNewFT(nodeId int64) (*convert.FlowTable, bool) {
 	for _, newFTs := range ei.usedContFTs {
-		newFt, exists := newFTs[nodeId]
+		newFt, exists := newFTs.Get(nodeId)
 		if exists {
 			return newFt, true
 		}

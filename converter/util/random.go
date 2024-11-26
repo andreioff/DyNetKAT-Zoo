@@ -2,9 +2,10 @@ package util
 
 import (
 	"cmp"
-	"maps"
 	"math/rand"
 	"slices"
+
+	om "github.com/wk8/go-ordered-map/v2"
 )
 
 const SEED int64 = 31
@@ -38,12 +39,16 @@ func RandomFromArray[OrdArr ~[]E, E cmp.Ordered](arr OrdArr, picksNr uint) (OrdA
 }
 
 func sortAndRemoveDuplicates[OrdArr ~[]E, E cmp.Ordered](arr OrdArr) OrdArr {
-	noDup := make(map[E]bool)
+	noDup := om.New[E, bool]()
+	noDupArr := []E{}
 	for _, el := range arr {
-		noDup[el] = true
+		_, exists := noDup.Get(el)
+		if !exists {
+			noDupArr = append(noDupArr, el)
+			noDup.Set(el, true)
+		}
 	}
 
-	noDupArr := slices.Collect(maps.Keys(noDup))
 	slices.Sort(noDupArr)
 	return noDupArr
 }

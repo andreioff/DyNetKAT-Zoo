@@ -133,8 +133,9 @@ func (f LatexSimpleEncoder) encodeSDNTerm(ei EncodingInfo) string {
 	var sb strings.Builder
 
 	prefix := ""
-	for swId := range ei.usedSwitchFTs {
-		sb.WriteString(prefix + f.encodeSwitchName(ei.nodeIdToIndex[swId], false))
+	for pair := ei.usedSwitchFTs.Oldest(); pair != nil; pair = pair.Next() {
+		swIndex, _ := ei.nodeIdToIndex.Get(pair.Key)
+		sb.WriteString(prefix + f.encodeSwitchName(swIndex, false))
 		prefix = f.sym.PAR
 	}
 
@@ -157,8 +158,9 @@ func (f LatexSimpleEncoder) encodeController(ei EncodingInfo, cIndex int) string
 	fmtCommStrs := []string{}
 	cName := fmt.Sprintf("%s%d", CONTROLLER_BASE_NAME, cIndex)
 
-	for swId := range ei.usedContFTs[cIndex] {
-		commStr := f.encodeCommunication(cName, ei.nodeIdToIndex[swId], false)
+	for pair := ei.usedContFTs[cIndex].Oldest(); pair != nil; pair = pair.Next() {
+		swIndex, _ := ei.nodeIdToIndex.Get(pair.Key)
+		commStr := f.encodeCommunication(cName, swIndex, false)
 		fmtCommStrs = append(fmtCommStrs, commStr)
 	}
 

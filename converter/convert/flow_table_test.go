@@ -4,35 +4,44 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	om "github.com/wk8/go-ordered-map/v2"
 	"utwente.nl/topology-to-dynetkat-coverter/util"
 )
 
-func getEmptyEntries() map[int64][]FlowRule {
-	return make(map[int64][]FlowRule)
+func ftNewMap(data []om.Pair[ftKeyT, ftValT]) *om.OrderedMap[ftKeyT, ftValT] {
+	return om.New[ftKeyT, ftValT](om.WithInitialData[ftKeyT, ftValT](data...))
 }
 
-func getMockFTEntries1() map[int64][]FlowRule {
-	return map[int64][]FlowRule{
-		0: {{10, 11, false}, {10, 12, true}},
-		1: {{13, 14, false}},
-		3: {{15, 16, false}, {15, 17, true}},
-	}
+func ftPair(key ftKeyT, val ftValT) om.Pair[ftKeyT, ftValT] {
+	return om.Pair[ftKeyT, ftValT]{Key: key, Value: val}
 }
 
-func getMockFTEntries2() map[int64][]FlowRule {
-	return map[int64][]FlowRule{
-		4: {{30, 31, false}, {30, 32, true}},
-		6: {{33, 34, false}},
-		2: {{35, 36, false}, {35, 37, true}},
-	}
+func getEmptyEntries() om.OrderedMap[int64, []FlowRule] {
+	return *om.New[ftKeyT, ftValT]()
 }
 
-func getMockFTEntries3() map[int64][]FlowRule {
-	return map[int64][]FlowRule{
-		0: {{10, 11, false}, {10, 12, true}},
-		1: {{13, 14, false}, {13, 19, false}, {13, 20, true}},
-		3: {{15, 16, false}, {15, 17, true}},
-	}
+func getMockFTEntries1() om.OrderedMap[int64, []FlowRule] {
+	return *om.New[ftKeyT, ftValT](om.WithInitialData(
+		om.Pair[ftKeyT, ftValT]{Key: 0, Value: ftValT{{10, 11, false}, {10, 12, true}}},
+		om.Pair[ftKeyT, ftValT]{Key: 1, Value: ftValT{{13, 14, false}}},
+		om.Pair[ftKeyT, ftValT]{Key: 3, Value: ftValT{{15, 16, false}, {15, 17, true}}},
+	))
+}
+
+func getMockFTEntries2() om.OrderedMap[int64, []FlowRule] {
+	return *om.New[ftKeyT, ftValT](om.WithInitialData(
+		om.Pair[ftKeyT, ftValT]{Key: 4, Value: ftValT{{30, 31, false}, {30, 32, true}}},
+		om.Pair[ftKeyT, ftValT]{Key: 6, Value: ftValT{{33, 34, false}}},
+		om.Pair[ftKeyT, ftValT]{Key: 2, Value: ftValT{{35, 36, false}, {35, 37, true}}},
+	))
+}
+
+func getMockFTEntries3() om.OrderedMap[int64, []FlowRule] {
+	return *om.New[int64, []FlowRule](om.WithInitialData(
+		om.Pair[ftKeyT, ftValT]{Key: 0, Value: []FlowRule{{10, 11, false}, {10, 12, true}}},
+		om.Pair[ftKeyT, ftValT]{Key: 1, Value: ftValT{{13, 14, false}, {13, 19, false}, {13, 20, true}}},
+		om.Pair[ftKeyT, ftValT]{Key: 3, Value: ftValT{{15, 16, false}, {15, 17, true}}},
+	))
 }
 
 func getMockEmptyFT() *FlowTable {
@@ -72,12 +81,12 @@ func TestNewFlowTable(t *testing.T) {
 
 func TestFlowTable_Entries(t *testing.T) {
 	type fields struct {
-		entries map[int64][]FlowRule
+		entries om.OrderedMap[int64, []FlowRule]
 	}
 	tests := []struct {
 		name   string
 		fields fields
-		want   map[int64][]FlowRule
+		want   om.OrderedMap[int64, []FlowRule]
 	}{
 		{
 			name: "Get flow table entries (empty) [Success]",
@@ -99,23 +108,23 @@ func TestFlowTable_Entries(t *testing.T) {
 			ft := &FlowTable{
 				entries: tt.fields.entries,
 			}
-			util.AssertEqualMaps(t, tt.want, ft.Entries())
+			util.AssertEqualMaps(t, &tt.want, ft.Entries())
 		})
 	}
 }
 
 func TestFlowTable_setEntries(t *testing.T) {
 	type fields struct {
-		entries map[int64][]FlowRule
+		entries om.OrderedMap[int64, []FlowRule]
 	}
 	type args struct {
-		newEntries map[int64][]FlowRule
+		newEntries om.OrderedMap[int64, []FlowRule]
 	}
 	tests := []struct {
 		name   string
 		fields fields
 		args   args
-		want   map[int64][]FlowRule
+		want   om.OrderedMap[int64, []FlowRule]
 	}{
 		{
 			name: "Set empty flow table entries [Success]",
@@ -144,14 +153,14 @@ func TestFlowTable_setEntries(t *testing.T) {
 				entries: tt.fields.entries,
 			}
 			ft.setEntries(tt.args.newEntries)
-			util.AssertEqualMaps(t, tt.want, ft.Entries())
+			util.AssertEqualMaps(t, &tt.want, ft.Entries())
 		})
 	}
 }
 
 func TestFlowTable_hasEntry(t *testing.T) {
 	type fields struct {
-		entries map[int64][]FlowRule
+		entries om.OrderedMap[int64, []FlowRule]
 	}
 	type args struct {
 		hostId int64
@@ -220,7 +229,7 @@ func TestFlowTable_hasEntry(t *testing.T) {
 
 func TestFlowTable_AddEntry(t *testing.T) {
 	type fields struct {
-		entries map[int64][]FlowRule
+		entries om.OrderedMap[int64, []FlowRule]
 	}
 	type args struct {
 		destHostId int64
@@ -252,11 +261,11 @@ func TestFlowTable_AddEntry(t *testing.T) {
 				destHostId: 1,
 				fr:         FlowRule{15, 16, true},
 			},
-			want: &FlowTable{map[int64][]FlowRule{
-				0: {{10, 11, false}, {10, 12, true}},
-				1: {{13, 14, false}, {15, 16, true}},
-				3: {{15, 16, false}, {15, 17, true}},
-			}},
+			want: &FlowTable{*ftNewMap([]om.Pair[ftKeyT, ftValT]{
+				ftPair(0, ftValT{{10, 11, false}, {10, 12, true}}),
+				ftPair(1, ftValT{{13, 14, false}, {15, 16, true}}),
+				ftPair(3, ftValT{{15, 16, false}, {15, 17, true}}),
+			})},
 		},
 		{
 			name: "New Entry With New Host Id [Success]",
@@ -267,12 +276,12 @@ func TestFlowTable_AddEntry(t *testing.T) {
 				destHostId: -3,
 				fr:         FlowRule{18, 19, false},
 			},
-			want: &FlowTable{map[int64][]FlowRule{
-				0:  {{10, 11, false}, {10, 12, true}},
-				1:  {{13, 14, false}},
-				3:  {{15, 16, false}, {15, 17, true}},
-				-3: {{18, 19, false}},
-			}},
+			want: &FlowTable{*ftNewMap([]om.Pair[ftKeyT, ftValT]{
+				ftPair(0, ftValT{{10, 11, false}, {10, 12, true}}),
+				ftPair(1, ftValT{{13, 14, false}}),
+				ftPair(3, ftValT{{15, 16, false}, {15, 17, true}}),
+				ftPair(-3, ftValT{{18, 19, false}}),
+			})},
 		},
 	}
 	for _, tt := range tests {
@@ -288,7 +297,7 @@ func TestFlowTable_AddEntry(t *testing.T) {
 
 func TestFlowTable_Filter(t *testing.T) {
 	type fields struct {
-		entries map[int64][]FlowRule
+		entries om.OrderedMap[int64, []FlowRule]
 	}
 	type args struct {
 		pred func(FlowRule) bool
@@ -333,10 +342,10 @@ func TestFlowTable_Filter(t *testing.T) {
 					return ft.isLink
 				},
 			},
-			want: &FlowTable{map[int64][]FlowRule{
-				0: {{10, 12, true}},
-				3: {{15, 17, true}},
-			}},
+			want: &FlowTable{*ftNewMap([]om.Pair[ftKeyT, ftValT]{
+				ftPair(0, ftValT{{10, 12, true}}),
+				ftPair(3, ftValT{{15, 17, true}}),
+			})},
 		},
 	}
 	for _, tt := range tests {
@@ -353,7 +362,7 @@ func TestFlowTable_Filter(t *testing.T) {
 
 func TestFlowTable_Extend(t *testing.T) {
 	type fields struct {
-		entries map[int64][]FlowRule
+		entries om.OrderedMap[int64, []FlowRule]
 	}
 	type args struct {
 		otherFt *FlowTable
@@ -428,7 +437,7 @@ func TestFlowTable_Extend(t *testing.T) {
 
 func TestFlowTable_Copy(t *testing.T) {
 	type fields struct {
-		entries map[int64][]FlowRule
+		entries om.OrderedMap[int64, []FlowRule]
 	}
 	tests := []struct {
 		name   string
@@ -464,7 +473,7 @@ func TestFlowTable_Copy(t *testing.T) {
 
 func TestFlowTable_ToNetKATPolicies(t *testing.T) {
 	type fields struct {
-		entries map[int64][]FlowRule
+		entries om.OrderedMap[int64, []FlowRule]
 	}
 	tests := []struct {
 		name   string

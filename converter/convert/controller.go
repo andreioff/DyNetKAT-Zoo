@@ -1,6 +1,7 @@
 package convert
 
 import (
+	om "github.com/wk8/go-ordered-map/v2"
 	"utwente.nl/topology-to-dynetkat-coverter/util"
 )
 
@@ -13,7 +14,7 @@ func init() {
 type Controller struct {
 	id            int64
 	switches      []*Switch
-	newFlowTables map[int64]*FlowTable
+	newFlowTables om.OrderedMap[int64, *FlowTable]
 }
 
 func (c *Controller) ID() int64 {
@@ -24,8 +25,8 @@ func (c *Controller) Switches() []*Switch {
 	return c.switches
 }
 
-func (c *Controller) NewFlowTables() map[int64]*FlowTable {
-	return c.newFlowTables
+func (c *Controller) NewFlowTables() *om.OrderedMap[int64, *FlowTable] {
+	return &c.newFlowTables
 }
 
 func NewController(switches []*Switch) (*Controller, error) {
@@ -36,7 +37,7 @@ func NewController(switches []*Switch) (*Controller, error) {
 	c := &Controller{
 		id:            controllerId,
 		switches:      switches,
-		newFlowTables: make(map[int64]*FlowTable),
+		newFlowTables: *om.New[int64, *FlowTable](),
 	}
 	controllerId++
 
@@ -76,13 +77,13 @@ func (c *Controller) AddNewFlowRules(nodeId, destHostId int64, frs []FlowRule) e
 		return util.NewError(util.ErrNoSwitchWithNodeId, nodeId)
 	}
 
-	ft, exists := c.newFlowTables[nodeId]
+	ft, exists := c.newFlowTables.Get(nodeId)
 	if !exists {
 		if !newEntriesExist(sw.FlowTable(), destHostId, frs) {
 			return nil
 		}
-		c.newFlowTables[nodeId] = sw.FlowTable().Copy()
-		ft = c.newFlowTables[nodeId]
+		c.newFlowTables.Set(nodeId, sw.FlowTable().Copy())
+		ft, _ = c.newFlowTables.Get(nodeId)
 	}
 
 	for _, fr := range frs {

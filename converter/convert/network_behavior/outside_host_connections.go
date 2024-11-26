@@ -1,6 +1,7 @@
 package behavior
 
 import (
+	om "github.com/wk8/go-ordered-map/v2"
 	"utwente.nl/topology-to-dynetkat-coverter/convert"
 	"utwente.nl/topology-to-dynetkat-coverter/util"
 )
@@ -79,13 +80,14 @@ func addNewHostConnFlowRules(newHost *convert.Host, n *convert.Network) error {
 func addEntriesToControllerNewFlowTables(
 	n *convert.Network,
 	destHostId int64,
-	newEntries map[int64][]convert.FlowRule,
+	newEntries om.OrderedMap[int64, []convert.FlowRule],
 ) error {
 	if n == nil {
 		return util.NewError(util.ErrNilArgument, "n")
 	}
 
-	for nodeId, frs := range newEntries {
+	for pair := newEntries.Oldest(); pair != nil; pair = pair.Next() {
+		nodeId, frs := pair.Key, pair.Value
 		sw, err := n.GetSwitch(nodeId)
 		if err != nil {
 			return err

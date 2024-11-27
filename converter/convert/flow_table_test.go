@@ -8,40 +8,37 @@ import (
 	"utwente.nl/topology-to-dynetkat-coverter/util"
 )
 
-func ftNewMap(data []om.Pair[ftKeyT, ftValT]) *om.OrderedMap[ftKeyT, ftValT] {
-	return om.New[ftKeyT, ftValT](om.WithInitialData[ftKeyT, ftValT](data...))
-}
-
-func ftPair(key ftKeyT, val ftValT) om.Pair[ftKeyT, ftValT] {
-	return om.Pair[ftKeyT, ftValT]{Key: key, Value: val}
-}
+var (
+	ftNewMap = util.GetOrderedMapFunc[ftKeyT, ftValT]()
+	ftPair   = util.GetOrderedMapPairFunc[ftKeyT, ftValT]()
+)
 
 func getEmptyEntries() om.OrderedMap[int64, []FlowRule] {
 	return *om.New[ftKeyT, ftValT]()
 }
 
 func getMockFTEntries1() om.OrderedMap[int64, []FlowRule] {
-	return *om.New[ftKeyT, ftValT](om.WithInitialData(
-		om.Pair[ftKeyT, ftValT]{Key: 0, Value: ftValT{{10, 11, false}, {10, 12, true}}},
-		om.Pair[ftKeyT, ftValT]{Key: 1, Value: ftValT{{13, 14, false}}},
-		om.Pair[ftKeyT, ftValT]{Key: 3, Value: ftValT{{15, 16, false}, {15, 17, true}}},
-	))
+	return *ftNewMap([]om.Pair[ftKeyT, ftValT]{
+		ftPair(0, ftValT{{10, 11, false}, {10, 12, true}}),
+		ftPair(1, ftValT{{13, 14, false}}),
+		ftPair(3, ftValT{{15, 16, false}, {15, 17, true}}),
+	})
 }
 
 func getMockFTEntries2() om.OrderedMap[int64, []FlowRule] {
-	return *om.New[ftKeyT, ftValT](om.WithInitialData(
-		om.Pair[ftKeyT, ftValT]{Key: 4, Value: ftValT{{30, 31, false}, {30, 32, true}}},
-		om.Pair[ftKeyT, ftValT]{Key: 6, Value: ftValT{{33, 34, false}}},
-		om.Pair[ftKeyT, ftValT]{Key: 2, Value: ftValT{{35, 36, false}, {35, 37, true}}},
-	))
+	return *ftNewMap([]om.Pair[ftKeyT, ftValT]{
+		ftPair(4, ftValT{{30, 31, false}, {30, 32, true}}),
+		ftPair(6, ftValT{{33, 34, false}}),
+		ftPair(2, ftValT{{35, 36, false}, {35, 37, true}}),
+	})
 }
 
 func getMockFTEntries3() om.OrderedMap[int64, []FlowRule] {
-	return *om.New[int64, []FlowRule](om.WithInitialData(
-		om.Pair[ftKeyT, ftValT]{Key: 0, Value: []FlowRule{{10, 11, false}, {10, 12, true}}},
-		om.Pair[ftKeyT, ftValT]{Key: 1, Value: ftValT{{13, 14, false}, {13, 19, false}, {13, 20, true}}},
-		om.Pair[ftKeyT, ftValT]{Key: 3, Value: ftValT{{15, 16, false}, {15, 17, true}}},
-	))
+	return *ftNewMap([]om.Pair[ftKeyT, ftValT]{
+		ftPair(0, []FlowRule{{10, 11, false}, {10, 12, true}}),
+		ftPair(1, ftValT{{13, 14, false}, {13, 19, false}, {13, 20, true}}),
+		ftPair(3, ftValT{{15, 16, false}, {15, 17, true}}),
+	})
 }
 
 func getMockEmptyFT() *FlowTable {

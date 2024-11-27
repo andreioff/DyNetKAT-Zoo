@@ -72,3 +72,18 @@ func diff[K comparable, V interface{}](expected, actual om.OrderedMap[K, V]) str
 
 	return "\n\nDiff:\n" + diff
 }
+
+func GetOrderedMapPairFunc[K comparable, V interface{}]() func(key K, value V) om.Pair[K, V] {
+	return func(key K, value V) om.Pair[K, V] {
+		return om.Pair[K, V]{
+			Key:   key,
+			Value: value,
+		}
+	}
+}
+
+func GetOrderedMapFunc[K comparable, V interface{}]() func(data []om.Pair[K, V]) *om.OrderedMap[K, V] {
+	return func(data []om.Pair[K, V]) *om.OrderedMap[K, V] {
+		return om.New[K, V](om.WithInitialData(data...))
+	}
+}

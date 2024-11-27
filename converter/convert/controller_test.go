@@ -8,6 +8,7 @@ import (
 	om "github.com/wk8/go-ordered-map/v2"
 	"gonum.org/v1/gonum/graph/simple"
 
+	tu "utwente.nl/topology-to-dynetkat-coverter/test_util"
 	"utwente.nl/topology-to-dynetkat-coverter/util"
 )
 
@@ -35,7 +36,7 @@ func TestNewController(t *testing.T) {
 				assert.Greater(t, nextContId, c.id)
 
 				assert.ElementsMatch(t, []*Switch{}, c.switches)
-				util.AssertEqualMaps(t, om.New[K, V](), &c.newFlowTables)
+				tu.AssertEqualMaps(t, om.New[K, V](), &c.newFlowTables)
 			},
 		},
 		{
@@ -59,7 +60,7 @@ func TestNewController(t *testing.T) {
 
 				assert.Greater(t, nextContId, c.id)
 
-				util.AssertEqualMaps(t, om.New[K, V](), &c.newFlowTables)
+				tu.AssertEqualMaps(t, om.New[K, V](), &c.newFlowTables)
 				assert.ElementsMatch(t, []*Switch{
 					{
 						topoNode:   simple.Node(1),
@@ -90,7 +91,7 @@ func TestNewController(t *testing.T) {
 
 				assert.Greater(t, nextContId, c.ID())
 
-				util.AssertEqualMaps(t, om.New[K, V](), c.NewFlowTables())
+				tu.AssertEqualMaps(t, om.New[K, V](), c.NewFlowTables())
 				assert.ElementsMatch(t, []*Switch{
 					{
 						topoNode:   simple.Node(3),
@@ -426,7 +427,7 @@ func TestController_AddNewFlowRules(t *testing.T) {
 			},
 			assertSetup: func(t *testing.T, c *Controller, initial *Controller) {
 				assert.ElementsMatch(t, initial.switches, c.switches)
-				util.AssertEqualMaps(
+				tu.AssertEqualMaps(
 					t,
 					newMap([]om.Pair[K, V]{
 						pair(1, getMockFT3()),
@@ -498,9 +499,9 @@ func TestController_AddNewFlowRules(t *testing.T) {
 			},
 			assertSetup: func(t *testing.T, c *Controller, initial *Controller) {
 				assert.ElementsMatch(t, initial.switches, c.switches)
-				util.AssertEqualMaps(t, newMap([]om.Pair[K, V]{
+				tu.AssertEqualMaps(t, newMap([]om.Pair[K, V]{
 					pair(1, &FlowTable{
-						*ftNewMap([]om.Pair[ftKeyT, ftValT]{
+						*ftNewMap(
 							ftPair(0, ftValT{
 								{10, 11, false},
 								{10, 12, true},
@@ -512,7 +513,6 @@ func TestController_AddNewFlowRules(t *testing.T) {
 								{15, 20, false},
 								{21, 22, true},
 							}),
-						},
 						),
 					}),
 					pair(2, getMockFT2()),

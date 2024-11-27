@@ -1,4 +1,4 @@
-package util
+package testutil
 
 import (
 	"fmt"
@@ -82,8 +82,17 @@ func GetOrderedMapPairFunc[K comparable, V interface{}]() func(key K, value V) o
 	}
 }
 
-func GetOrderedMapFunc[K comparable, V interface{}]() func(data []om.Pair[K, V]) *om.OrderedMap[K, V] {
-	return func(data []om.Pair[K, V]) *om.OrderedMap[K, V] {
+func GetOrderedMapPairPointerFunc[K comparable, V interface{}]() func(key K, value V) *om.Pair[K, V] {
+	return func(key K, value V) *om.Pair[K, V] {
+		return &om.Pair[K, V]{
+			Key:   key,
+			Value: value,
+		}
+	}
+}
+
+func GetOrderedMapFunc[K comparable, V interface{}]() func(data ...om.Pair[K, V]) *om.OrderedMap[K, V] {
+	return func(data ...om.Pair[K, V]) *om.OrderedMap[K, V] {
 		return om.New[K, V](om.WithInitialData(data...))
 	}
 }

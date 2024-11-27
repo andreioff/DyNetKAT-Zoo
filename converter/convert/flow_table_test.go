@@ -5,12 +5,13 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	om "github.com/wk8/go-ordered-map/v2"
+	tu "utwente.nl/topology-to-dynetkat-coverter/test_util"
 	"utwente.nl/topology-to-dynetkat-coverter/util"
 )
 
 var (
-	ftNewMap = util.GetOrderedMapFunc[ftKeyT, ftValT]()
-	ftPair   = util.GetOrderedMapPairFunc[ftKeyT, ftValT]()
+	ftNewMap = tu.GetOrderedMapFunc[ftKeyT, ftValT]()
+	ftPair   = tu.GetOrderedMapPairFunc[ftKeyT, ftValT]()
 )
 
 func getEmptyEntries() om.OrderedMap[int64, []FlowRule] {
@@ -18,27 +19,27 @@ func getEmptyEntries() om.OrderedMap[int64, []FlowRule] {
 }
 
 func getMockFTEntries1() om.OrderedMap[int64, []FlowRule] {
-	return *ftNewMap([]om.Pair[ftKeyT, ftValT]{
+	return *ftNewMap(
 		ftPair(0, ftValT{{10, 11, false}, {10, 12, true}}),
 		ftPair(1, ftValT{{13, 14, false}}),
 		ftPair(3, ftValT{{15, 16, false}, {15, 17, true}}),
-	})
+	)
 }
 
 func getMockFTEntries2() om.OrderedMap[int64, []FlowRule] {
-	return *ftNewMap([]om.Pair[ftKeyT, ftValT]{
+	return *ftNewMap(
 		ftPair(4, ftValT{{30, 31, false}, {30, 32, true}}),
 		ftPair(6, ftValT{{33, 34, false}}),
 		ftPair(2, ftValT{{35, 36, false}, {35, 37, true}}),
-	})
+	)
 }
 
 func getMockFTEntries3() om.OrderedMap[int64, []FlowRule] {
-	return *ftNewMap([]om.Pair[ftKeyT, ftValT]{
+	return *ftNewMap(
 		ftPair(0, []FlowRule{{10, 11, false}, {10, 12, true}}),
 		ftPair(1, ftValT{{13, 14, false}, {13, 19, false}, {13, 20, true}}),
 		ftPair(3, ftValT{{15, 16, false}, {15, 17, true}}),
-	})
+	)
 }
 
 func getMockEmptyFT() *FlowTable {
@@ -105,7 +106,7 @@ func TestFlowTable_Entries(t *testing.T) {
 			ft := &FlowTable{
 				entries: tt.fields.entries,
 			}
-			util.AssertEqualMaps(t, &tt.want, ft.Entries())
+			tu.AssertEqualMaps(t, &tt.want, ft.Entries())
 		})
 	}
 }
@@ -150,7 +151,7 @@ func TestFlowTable_setEntries(t *testing.T) {
 				entries: tt.fields.entries,
 			}
 			ft.setEntries(tt.args.newEntries)
-			util.AssertEqualMaps(t, &tt.want, ft.Entries())
+			tu.AssertEqualMaps(t, &tt.want, ft.Entries())
 		})
 	}
 }
@@ -258,11 +259,11 @@ func TestFlowTable_AddEntry(t *testing.T) {
 				destHostId: 1,
 				fr:         FlowRule{15, 16, true},
 			},
-			want: &FlowTable{*ftNewMap([]om.Pair[ftKeyT, ftValT]{
+			want: &FlowTable{*ftNewMap(
 				ftPair(0, ftValT{{10, 11, false}, {10, 12, true}}),
 				ftPair(1, ftValT{{13, 14, false}, {15, 16, true}}),
 				ftPair(3, ftValT{{15, 16, false}, {15, 17, true}}),
-			})},
+			)},
 		},
 		{
 			name: "New Entry With New Host Id [Success]",
@@ -273,12 +274,12 @@ func TestFlowTable_AddEntry(t *testing.T) {
 				destHostId: -3,
 				fr:         FlowRule{18, 19, false},
 			},
-			want: &FlowTable{*ftNewMap([]om.Pair[ftKeyT, ftValT]{
+			want: &FlowTable{*ftNewMap(
 				ftPair(0, ftValT{{10, 11, false}, {10, 12, true}}),
 				ftPair(1, ftValT{{13, 14, false}}),
 				ftPair(3, ftValT{{15, 16, false}, {15, 17, true}}),
 				ftPair(-3, ftValT{{18, 19, false}}),
-			})},
+			)},
 		},
 	}
 	for _, tt := range tests {
@@ -339,10 +340,10 @@ func TestFlowTable_Filter(t *testing.T) {
 					return ft.isLink
 				},
 			},
-			want: &FlowTable{*ftNewMap([]om.Pair[ftKeyT, ftValT]{
+			want: &FlowTable{*ftNewMap(
 				ftPair(0, ftValT{{10, 12, true}}),
 				ftPair(3, ftValT{{15, 17, true}}),
-			})},
+			)},
 		},
 	}
 	for _, tt := range tests {

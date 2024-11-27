@@ -9,10 +9,12 @@ import (
 	om "github.com/wk8/go-ordered-map/v2"
 	"github.com/yaricom/goGraphML/graphml"
 	"gonum.org/v1/gonum/graph"
-	"gonum.org/v1/gonum/graph/simple"
+	ug "utwente.nl/topology-to-dynetkat-coverter/util/undirected_graph"
 )
 
-const GRAPHML_EXT = ".graphml"
+const (
+	GRAPHML_EXT = ".graphml"
+)
 
 func getPathsFromDir(dirPath string) ([]string, error) {
 	files, err := os.ReadDir(dirPath)
@@ -61,11 +63,11 @@ func GetGraphMLs(dirPath string) ([]graphml.GraphML, error) {
 
 func GraphMLToGraph(gml graphml.GraphML) (Graph, error) {
 	if len(gml.Graphs) != 1 {
-		return *simple.NewUndirectedGraph(), NewError(ErrGraphMLExactly1Graph)
+		return *ug.NewWeightedUndirectedGraph(), NewError(ErrGraphMLExactly1Graph)
 	}
 
 	gmlGraph := gml.Graphs[0]
-	g := *simple.NewUndirectedGraph()
+	g := *ug.NewWeightedUndirectedGraph()
 
 	gmlNodeToGNode := om.New[string, graph.Node]()
 	for _, gmlNode := range gmlGraph.Nodes {
@@ -84,7 +86,7 @@ func GraphMLToGraph(gml graphml.GraphML) (Graph, error) {
 
 		fromNode, _ := gmlNodeToGNode.Get(from)
 		toNode, _ := gmlNodeToGNode.Get(to)
-		g.SetEdge(g.NewEdge(fromNode, toNode))
+		g.SetWeightedEdge(g.NewWeightedEdge(fromNode, toNode, ug.DEFAULT_EDGE_WEIGHT))
 	}
 
 	return g, nil

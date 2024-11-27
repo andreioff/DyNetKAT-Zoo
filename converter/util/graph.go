@@ -5,12 +5,12 @@ import (
 
 	om "github.com/wk8/go-ordered-map/v2"
 	"gonum.org/v1/gonum/graph"
-	"gonum.org/v1/gonum/graph/simple"
 	"gonum.org/v1/gonum/graph/topo"
+	ug "utwente.nl/topology-to-dynetkat-coverter/util/undirected_graph"
 )
 
 type (
-	Graph = simple.UndirectedGraph
+	Graph = ug.WeightedUndirectedGraph
 )
 
 // return the valid topologies in the given array

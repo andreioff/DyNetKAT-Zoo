@@ -280,7 +280,7 @@ func mapNodeToSwitch(switches []*Switch) om.OrderedMap[int64, *Switch] {
 
 func makeSwitchesFromTopology(
 	topo util.Graph,
-	edgeToLink *om.OrderedMap[util.I64Tup, *Link],
+	edgeToLink om.OrderedMap[util.I64Tup, *Link],
 ) ([]*Switch, error) {
 	switches := []*Switch{}
 
@@ -302,17 +302,17 @@ func makeSwitchesFromTopology(
 	return switches, nil
 }
 
-func makeLinks(topo util.Graph, portNr *int64) (*om.OrderedMap[util.I64Tup, *Link], error) {
+func makeLinks(topo util.Graph, portNr *int64) (om.OrderedMap[util.I64Tup, *Link], error) {
 	if portNr == nil {
-		return om.New[util.I64Tup, *Link](), util.NewError(util.ErrNilArgument, "portNr")
+		return *om.New[util.I64Tup, *Link](), util.NewError(util.ErrNilArgument, "portNr")
 	}
 
-	edgeTolink := om.New[util.I64Tup, *Link]()
+	edgeTolink := *om.New[util.I64Tup, *Link]()
 	iter := topo.Edges()
 	for iter.Next() {
 		newLink, err := NewLink(iter.Edge(), *portNr, *portNr+1)
 		if err != nil {
-			return om.New[util.I64Tup, *Link](), err
+			return *om.New[util.I64Tup, *Link](), err
 		}
 
 		edgeId := util.NewI64Tup(iter.Edge().From().ID(), iter.Edge().To().ID())
@@ -325,7 +325,7 @@ func makeLinks(topo util.Graph, portNr *int64) (*om.OrderedMap[util.I64Tup, *Lin
 func getSwitchLinks(
 	topo util.Graph,
 	node graph.Node,
-	edgeToLink *om.OrderedMap[util.I64Tup, *Link],
+	edgeToLink om.OrderedMap[util.I64Tup, *Link],
 ) ([]*Link, error) {
 	incidentEdges, err := util.GetIncidentEdges(topo, node)
 	if err != nil {

@@ -70,7 +70,7 @@ func (ohc *OutsideHostConn) addNewHostConnFlowRules(
 			return err
 		}
 
-		_, err = addEntriesToControllerNewFlowTables(n, host.ID(), newEntries)
+		err = addEntriesToControllerNewFlowTables(n, host.ID(), newEntries, true)
 		if err != nil {
 			return err
 		}

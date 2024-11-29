@@ -69,30 +69,46 @@ func (c *Controller) FindSwitch(nodeId int64) *Switch {
 
 /*
 Adds flow rules to the new flow table of the switch with the given node id, creating the
-new flow table if it doesn't exist. The flow table is created only if new flow rules exist.
-Returns true if at least one flow rule was successfully added, and false otherwise.
+new flow table if it doesn't exist. If the duplicateSwFT flag is set, the new flow table
+is a copy of the switch's current flow table and is created only if new flow rules exist
+in the given array.
 */
-func (c *Controller) AddNewFlowRules(nodeId, destHostId int64, frs []FlowRule) (bool, error) {
+func (c *Controller) AddNewFlowRules(
+	nodeId, destHostId int64,
+	frs []FlowRule,
+	duplicateSwFT bool,
+) error {
 	sw := c.FindSwitch(nodeId)
 	if sw == nil {
-		return false, util.NewError(util.ErrNoSwitchWithNodeId, nodeId)
+		return util.NewError(util.ErrNoSwitchWithNodeId, nodeId)
 	}
 
 	ft, exists := c.newFlowTables.Get(nodeId)
 	if !exists {
-		if !newEntriesExist(sw.FlowTable(), destHostId, frs) {
-			return false, nil
+		if duplicateSwFT && !newEntriesExist(sw.FlowTable(), destHostId, frs) {
+			return nil
 		}
-		c.newFlowTables.Set(nodeId, sw.FlowTable().Copy())
-		ft, _ = c.newFlowTables.Get(nodeId)
+		ft = c.CreateNewFlowTable(sw, duplicateSwFT)
 	}
 
-	success := false
 	for _, fr := range frs {
-		success = (ft.AddEntry(destHostId, fr) || success)
+		ft.AddEntry(destHostId, fr)
 	}
 
-	return success, nil
+	return nil
+}
+
+func (c *Controller) CreateNewFlowTable(
+	sw *Switch,
+	duplicateSwFT bool,
+) *FlowTable {
+	if duplicateSwFT {
+		c.newFlowTables.Set(sw.topoNode.ID(), sw.FlowTable().Copy())
+	} else {
+		c.newFlowTables.Set(sw.topoNode.ID(), NewFlowTable())
+	}
+	ft, _ := c.newFlowTables.Get(sw.topoNode.ID())
+	return ft
 }
 
 func newEntriesExist(

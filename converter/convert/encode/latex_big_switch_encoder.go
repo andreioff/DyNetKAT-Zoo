@@ -55,7 +55,6 @@ func (f LatexBigSwitchEncoder) encodeInformation(ei EncodingInfo) string {
 func (f LatexBigSwitchEncoder) encodeSwitch(
 	swIndex int,
 	ft *convert.FlowTable,
-	canBeEmpty bool,
 ) string {
 	swName := f.encodeSwitchName(swIndex, false)
 
@@ -65,9 +64,6 @@ func (f LatexBigSwitchEncoder) encodeSwitch(
 	fmtFlowRules := f.encodeNetKATPolicies(onlyNonLinkFt.ToNetKATPolicies())
 
 	if fmtFlowRules == "" {
-		if !canBeEmpty {
-			return ""
-		}
 		fmtFlowRules = fmt.Sprintf("%s", f.sym.ZERO)
 	}
 
@@ -81,7 +77,7 @@ func (f LatexBigSwitchEncoder) encodeSwitchNewFT(swIndex int, newFT *convert.Flo
 	})
 	updatedSwStrs := f.encodeNetKATPolicies(noLinksFt.ToNetKATPolicies())
 	if updatedSwStrs == "" {
-		updatedSwStrs = f.sym.BOT
+		updatedSwStrs = fmt.Sprintf("%s", f.sym.ZERO)
 	}
 	return fmt.Sprintf("%s & %s & %s%s", newSwName, f.sym.DEF, updatedSwStrs, NEW_LN)
 }

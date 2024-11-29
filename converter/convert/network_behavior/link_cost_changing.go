@@ -8,9 +8,6 @@ import (
 	undirectedgraph "utwente.nl/topology-to-dynetkat-coverter/util/undirected_graph"
 )
 
-// TODO Note that in this case, some switches must receive a "drop all" policy update,
-// which is not the case at the moment
-
 const (
 	CHANGING_COSTS_ATTEMPTS = 10
 	MAX_LINK_COST           = 20
@@ -47,12 +44,17 @@ func (lcc *LinkCostChanging) tryPopulateNewFlowTables(n *convert.Network) error 
 			return err
 		}
 
-		success, err := lcc.populateControllerNewFlowTables(n)
+		err = lcc.populateControllerNewFlowTables(n)
 		if err != nil {
 			return err
 		}
 
-		if success {
+		allNewFTsRemoved, err := lcc.removeDuplicateFTs(n)
+		if err != nil {
+			return err
+		}
+
+		if !allNewFTsRemoved {
 			return nil
 		}
 
@@ -66,8 +68,7 @@ func (lcc *LinkCostChanging) tryPopulateNewFlowTables(n *convert.Network) error 
 	return util.NewError(util.ErrMaxCostChangingAttemptsReached, CHANGING_COSTS_ATTEMPTS)
 }
 
-func (_ *LinkCostChanging) populateControllerNewFlowTables(n *convert.Network) (bool, error) {
-	success := false
+func (_ *LinkCostChanging) populateControllerNewFlowTables(n *convert.Network) error {
 	for i := range len(n.Hosts()) {
 		for j := range len(n.Hosts()) {
 			if i == j {
@@ -81,15 +82,39 @@ func (_ *LinkCostChanging) populateControllerNewFlowTables(n *convert.Network) (
 				h2.SwitchPort(),
 			)
 			if err != nil {
-				return success, err
+				return err
 			}
 
-			status, err := addEntriesToControllerNewFlowTables(n, h2.ID(), entries)
+			err = addEntriesToControllerNewFlowTables(n, h2.ID(), entries, false)
 			if err != nil {
-				return success, err
+				return err
 			}
-			success = success || status
 		}
 	}
-	return success, nil
+	return nil
+}
+
+// Removes any new flow tables that have the same entries as the corresponding switch flow table.
+// Returns true if all new flow tables were removed, and false otherwise.
+func (_ *LinkCostChanging) removeDuplicateFTs(n *convert.Network) (bool, error) {
+	if n == nil {
+		return false, util.NewError(util.ErrNilArgument, "n")
+	}
+
+	allRemoved := true
+	for _, sw := range n.Switches() {
+		c := sw.Controller()
+		if c == nil {
+			return false, util.NewError(util.ErrSwitchHasNilController)
+		}
+
+		newFt, newFtExists := c.NewFlowTables().Get(sw.TopoNode().ID())
+		if newFtExists && newFt.IsEqual(sw.FlowTable()) {
+			c.NewFlowTables().Delete(sw.TopoNode().ID())
+		} else if newFtExists {
+			allRemoved = false
+		}
+	}
+
+	return allRemoved, nil
 }

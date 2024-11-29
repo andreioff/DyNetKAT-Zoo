@@ -35,30 +35,29 @@ func addEntriesToControllerNewFlowTables(
 	n *convert.Network,
 	destHostId int64,
 	newEntries om.OrderedMap[int64, []convert.FlowRule],
-) (bool, error) {
+	duplicateSwFT bool,
+) error {
 	if n == nil {
-		return false, util.NewError(util.ErrNilArgument, "n")
+		return util.NewError(util.ErrNilArgument, "n")
 	}
 
-	success := false
 	for pair := newEntries.Oldest(); pair != nil; pair = pair.Next() {
 		nodeId, frs := pair.Key, pair.Value
 		sw, err := n.GetSwitch(nodeId)
 		if err != nil {
-			return success, err
+			return err
 		}
 
 		c := sw.Controller()
 		if c == nil {
-			return success, util.NewError(util.ErrSwitchHasNilController)
+			return util.NewError(util.ErrSwitchHasNilController)
 		}
 
-		status, err := c.AddNewFlowRules(nodeId, destHostId, frs)
+		err = c.AddNewFlowRules(nodeId, destHostId, frs, duplicateSwFT)
 		if err != nil {
-			return success, err
+			return err
 		}
-		success = success || status
 	}
 
-	return success, nil
+	return nil
 }

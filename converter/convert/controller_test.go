@@ -329,16 +329,17 @@ func TestController_AddNewFlowRules(t *testing.T) {
 		newFlowTables om.OrderedMap[K, V]
 	}
 	type args struct {
-		nodeId     int64
-		destHostId int64
-		flowRules  []FlowRule
+		nodeId        int64
+		destHostId    int64
+		flowRules     []FlowRule
+		duplicateSwFT bool
 	}
 	tests := []struct {
 		name        string
 		fields      fields
 		args        args
 		wantErr     string
-		assertSetup func(*testing.T, bool, *Controller, *Controller)
+		assertSetup func(*testing.T, *Controller, *Controller)
 	}{
 		{
 			name: "No switch found [Error]",
@@ -361,9 +362,10 @@ func TestController_AddNewFlowRules(t *testing.T) {
 				newFlowTables: *om.New[K, V](),
 			},
 			args: args{
-				nodeId:     -1,
-				destHostId: 0,
-				flowRules:  []FlowRule{},
+				nodeId:        -1,
+				destHostId:    0,
+				flowRules:     []FlowRule{},
+				duplicateSwFT: true,
 			},
 			wantErr: fmt.Sprintf(util.ErrNoSwitchWithNodeId, -1),
 		},
@@ -390,12 +392,12 @@ func TestController_AddNewFlowRules(t *testing.T) {
 				}),
 			},
 			args: args{
-				nodeId:     1,
-				destHostId: 1,
-				flowRules:  []FlowRule{{13, 14, false}},
+				nodeId:        1,
+				destHostId:    1,
+				flowRules:     []FlowRule{{13, 14, false}},
+				duplicateSwFT: true,
 			},
-			assertSetup: func(t *testing.T, actual bool, c *Controller, initial *Controller) {
-				assert.Equal(t, false, actual)
+			assertSetup: func(t *testing.T, c *Controller, initial *Controller) {
 				assert.EqualValues(t, initial, c)
 			},
 		},
@@ -422,12 +424,12 @@ func TestController_AddNewFlowRules(t *testing.T) {
 				}),
 			},
 			args: args{
-				nodeId:     1,
-				destHostId: 1,
-				flowRules:  []FlowRule{{13, 19, false}, {13, 20, true}},
+				nodeId:        1,
+				destHostId:    1,
+				flowRules:     []FlowRule{{13, 19, false}, {13, 20, true}},
+				duplicateSwFT: true,
 			},
-			assertSetup: func(t *testing.T, actual bool, c *Controller, initial *Controller) {
-				assert.Equal(t, true, actual)
+			assertSetup: func(t *testing.T, c *Controller, initial *Controller) {
 				assert.ElementsMatch(t, initial.switches, c.switches)
 				tu.AssertEqualMaps(
 					t,
@@ -463,12 +465,12 @@ func TestController_AddNewFlowRules(t *testing.T) {
 				}),
 			},
 			args: args{
-				nodeId:     1,
-				destHostId: 1,
-				flowRules:  []FlowRule{{13, 19, false}, {13, 20, true}},
+				nodeId:        1,
+				destHostId:    1,
+				flowRules:     []FlowRule{{13, 19, false}, {13, 20, true}},
+				duplicateSwFT: true,
 			},
-			assertSetup: func(t *testing.T, actual bool, c *Controller, initial *Controller) {
-				assert.Equal(t, false, actual)
+			assertSetup: func(t *testing.T, c *Controller, initial *Controller) {
 				assert.EqualValues(t, initial, c)
 			},
 		},
@@ -496,12 +498,12 @@ func TestController_AddNewFlowRules(t *testing.T) {
 				}),
 			},
 			args: args{
-				nodeId:     1,
-				destHostId: 3,
-				flowRules:  []FlowRule{{15, 20, false}, {21, 22, true}},
+				nodeId:        1,
+				destHostId:    3,
+				flowRules:     []FlowRule{{15, 20, false}, {21, 22, true}},
+				duplicateSwFT: true,
 			},
-			assertSetup: func(t *testing.T, actual bool, c *Controller, initial *Controller) {
-				assert.Equal(t, true, actual)
+			assertSetup: func(t *testing.T, c *Controller, initial *Controller) {
 				assert.ElementsMatch(t, initial.switches, c.switches)
 				tu.AssertEqualMaps(t, newMap([]om.Pair[K, V]{
 					pair(1, &FlowTable{
@@ -523,6 +525,88 @@ func TestController_AddNewFlowRules(t *testing.T) {
 				}), &c.newFlowTables)
 			},
 		},
+		{
+			name: "No new flow table, empty flow rules array, no switch flow table duplication [Success]",
+			fields: fields{
+				id: 1,
+				switches: []*Switch{
+					{
+						topoNode:   simple.Node(1),
+						controller: nil,
+						flowTable:  getMockFT1(),
+						links:      []*Link{},
+					},
+					{
+						topoNode:   simple.Node(2),
+						controller: nil,
+						flowTable:  &FlowTable{},
+						links:      []*Link{},
+					},
+				},
+				newFlowTables: *newMap([]om.Pair[K, V]{
+					pair(2, getMockFT2()),
+				}),
+			},
+			args: args{
+				nodeId:        1,
+				destHostId:    1,
+				flowRules:     []FlowRule{},
+				duplicateSwFT: false,
+			},
+			assertSetup: func(t *testing.T, c *Controller, initial *Controller) {
+				assert.ElementsMatch(t, initial.switches, c.switches)
+				tu.AssertEqualMaps(
+					t,
+					newMap([]om.Pair[K, V]{
+						pair(1, getMockEmptyFT()),
+						pair(2, getMockFT2()),
+					}),
+					&c.newFlowTables,
+				)
+			},
+		},
+		{
+			name: "No new flow table, new entries, no switch flow table duplication [Success]",
+			fields: fields{
+				id: 1,
+				switches: []*Switch{
+					{
+						topoNode:   simple.Node(1),
+						controller: nil,
+						flowTable:  getMockFT1(),
+						links:      []*Link{},
+					},
+					{
+						topoNode:   simple.Node(2),
+						controller: nil,
+						flowTable:  &FlowTable{},
+						links:      []*Link{},
+					},
+				},
+				newFlowTables: *newMap([]om.Pair[K, V]{
+					pair(2, getMockFT2()),
+				}),
+			},
+			args: args{
+				nodeId:        1,
+				destHostId:    1,
+				flowRules:     []FlowRule{{13, 19, false}, {13, 20, true}},
+				duplicateSwFT: false,
+			},
+			assertSetup: func(t *testing.T, c *Controller, initial *Controller) {
+				assert.ElementsMatch(t, initial.switches, c.switches)
+				tu.AssertEqualMaps(
+					t,
+					newMap([]om.Pair[K, V]{
+						pair(1, &FlowTable{*ftNewMap(
+							ftPair(1, []FlowRule{{13, 19, false}, {13, 20, true}}),
+						)}),
+						pair(2, getMockFT2()),
+					}),
+					&c.newFlowTables,
+				)
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -533,7 +617,12 @@ func TestController_AddNewFlowRules(t *testing.T) {
 			}
 			c := *cInitial // copy
 
-			got, err := c.AddNewFlowRules(tt.args.nodeId, tt.args.destHostId, tt.args.flowRules)
+			err := c.AddNewFlowRules(
+				tt.args.nodeId,
+				tt.args.destHostId,
+				tt.args.flowRules,
+				tt.args.duplicateSwFT,
+			)
 			if tt.wantErr == "" {
 				assert.NoError(t, err)
 			} else {
@@ -543,7 +632,7 @@ func TestController_AddNewFlowRules(t *testing.T) {
 			}
 			// Assert the result
 			if tt.assertSetup != nil {
-				tt.assertSetup(t, got, &c, cInitial)
+				tt.assertSetup(t, &c, cInitial)
 			}
 		})
 	}

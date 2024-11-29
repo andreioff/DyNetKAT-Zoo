@@ -47,7 +47,15 @@ func (f LatexSimpleEncoder) encodeSwitchNewFT(swIndex int, newFT *convert.FlowTa
 	newSwName := f.encodeSwitchName(swIndex, true)
 	updatedSwStrs := f.encodeNetKATPolicies(newFT.ToNetKATPolicies(), newSwName)
 	if len(updatedSwStrs) == 0 {
-		return fmt.Sprintf("%s & %s & %s%s", newSwName, f.sym.DEF, f.sym.BOT, NEW_LN)
+		return fmt.Sprintf(
+			"%s & %s & %s%s%s%s",
+			newSwName,
+			f.sym.DEF,
+			f.sym.ZERO,
+			f.sym.SEQ,
+			newSwName,
+			NEW_LN,
+		)
 	}
 	fmtNewSw := f.joinNonDetThridColumn(updatedSwStrs)
 	return fmt.Sprintf("%s & %s & %s%s", newSwName, f.sym.DEF, fmtNewSw, NEW_LN)
@@ -56,16 +64,12 @@ func (f LatexSimpleEncoder) encodeSwitchNewFT(swIndex int, newFT *convert.FlowTa
 func (f LatexSimpleEncoder) encodeSwitch(
 	swIndex int,
 	ft *convert.FlowTable,
-	canBeEmpty bool,
 ) string {
 	swName := f.encodeSwitchName(swIndex, false)
 
 	fmtFlowRules := f.encodeNetKATPolicies(ft.ToNetKATPolicies(), swName)
 
 	if len(fmtFlowRules) == 0 {
-		if !canBeEmpty {
-			return ""
-		}
 		dropAllStr := fmt.Sprintf("%s%s%s", f.sym.ZERO, f.sym.SEQ, swName)
 		fmtFlowRules = append(fmtFlowRules, dropAllStr)
 	}

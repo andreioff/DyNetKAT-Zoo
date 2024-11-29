@@ -27,7 +27,7 @@ var LATEX_SYMBOLS = SymbolEncoding{
 }
 
 type CustomFunctions interface {
-	encodeSwitch(int, *convert.FlowTable, bool) string
+	encodeSwitch(int, *convert.FlowTable) string
 	encodeSwitchNewFT(int, *convert.FlowTable) string
 	encodeController(EncodingInfo, int) string
 	encodeInformation(EncodingInfo) string
@@ -58,14 +58,14 @@ func (f LatexEncoder) encodeSwitches(ei EncodingInfo) string {
 
 	for pair := ei.usedSwitchFTs.Oldest(); pair != nil; pair = pair.Next() {
 		swId, ft := pair.Key, pair.Value
-		newFT, willReceiveUpdate := ei.FindNewFT(swId)
+		newFT, newFTExists := ei.FindNewFT(swId)
 		swIndex, _ := ei.nodeIdToIndex.Get(swId)
 
-		swStr := f.encodeSwitch(swIndex, ft, willReceiveUpdate)
+		swStr := f.encodeSwitch(swIndex, ft)
 		sb.WriteString(swStr)
 		sb.WriteString(NEW_LN)
 
-		if willReceiveUpdate {
+		if newFTExists {
 			updateSwStr := f.encodeSwitchNewFT(swIndex, newFT)
 			sb.WriteString(updateSwStr)
 			sb.WriteString(NEW_LN)

@@ -4,6 +4,7 @@ import (
 	"strconv"
 
 	om "github.com/wk8/go-ordered-map/v2"
+	"utwente.nl/topology-to-dynetkat-coverter/util"
 )
 
 const (
@@ -141,4 +142,22 @@ func (ft *FlowTable) Copy() *FlowTable {
 	newFt.setEntries(entries)
 
 	return newFt
+}
+
+func (ft *FlowTable) IsEqual(otherFt *FlowTable) bool {
+	if otherFt == nil {
+		return false
+	}
+	entries, otherEntries := ft.entries, otherFt.entries
+	if entries.Len() != otherEntries.Len() {
+		return false
+	}
+	for pair := otherEntries.Oldest(); pair != nil; pair = pair.Next() {
+		key, otherArr := pair.Key, pair.Value
+		arr, exists := entries.Get(key)
+		if !exists || !util.ArePermutations(arr, otherArr) {
+			return false
+		}
+	}
+	return true
 }

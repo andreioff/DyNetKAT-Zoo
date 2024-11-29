@@ -30,3 +30,25 @@ func SplitArray[T any](arr []T, slicesNr uint) [][]T {
 
 	return slices
 }
+
+func ArePermutations[T comparable](a []T, b []T) bool {
+	if len(a) != len(b) {
+		return false
+	}
+
+	ma, mb := getMapFromArray(a), getMapFromArray(b)
+	return MapsAreEqual(ma, mb)
+}
+
+func getMapFromArray[T comparable](arr []T) map[T]int {
+	m := make(map[T]int)
+	for _, el := range arr {
+		if _, ok := m[el]; !ok {
+			m[el] = 1
+			continue
+		}
+		m[el] = m[el] + 1
+	}
+
+	return m
+}

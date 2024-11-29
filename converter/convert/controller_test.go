@@ -338,7 +338,7 @@ func TestController_AddNewFlowRules(t *testing.T) {
 		fields      fields
 		args        args
 		wantErr     string
-		assertSetup func(*testing.T, *Controller, *Controller)
+		assertSetup func(*testing.T, bool, *Controller, *Controller)
 	}{
 		{
 			name: "No switch found [Error]",
@@ -394,7 +394,8 @@ func TestController_AddNewFlowRules(t *testing.T) {
 				destHostId: 1,
 				flowRules:  []FlowRule{{13, 14, false}},
 			},
-			assertSetup: func(t *testing.T, c *Controller, initial *Controller) {
+			assertSetup: func(t *testing.T, actual bool, c *Controller, initial *Controller) {
+				assert.Equal(t, false, actual)
 				assert.EqualValues(t, initial, c)
 			},
 		},
@@ -425,7 +426,8 @@ func TestController_AddNewFlowRules(t *testing.T) {
 				destHostId: 1,
 				flowRules:  []FlowRule{{13, 19, false}, {13, 20, true}},
 			},
-			assertSetup: func(t *testing.T, c *Controller, initial *Controller) {
+			assertSetup: func(t *testing.T, actual bool, c *Controller, initial *Controller) {
+				assert.Equal(t, true, actual)
 				assert.ElementsMatch(t, initial.switches, c.switches)
 				tu.AssertEqualMaps(
 					t,
@@ -465,7 +467,8 @@ func TestController_AddNewFlowRules(t *testing.T) {
 				destHostId: 1,
 				flowRules:  []FlowRule{{13, 19, false}, {13, 20, true}},
 			},
-			assertSetup: func(t *testing.T, c *Controller, initial *Controller) {
+			assertSetup: func(t *testing.T, actual bool, c *Controller, initial *Controller) {
+				assert.Equal(t, false, actual)
 				assert.EqualValues(t, initial, c)
 			},
 		},
@@ -497,7 +500,8 @@ func TestController_AddNewFlowRules(t *testing.T) {
 				destHostId: 3,
 				flowRules:  []FlowRule{{15, 20, false}, {21, 22, true}},
 			},
-			assertSetup: func(t *testing.T, c *Controller, initial *Controller) {
+			assertSetup: func(t *testing.T, actual bool, c *Controller, initial *Controller) {
+				assert.Equal(t, true, actual)
 				assert.ElementsMatch(t, initial.switches, c.switches)
 				tu.AssertEqualMaps(t, newMap([]om.Pair[K, V]{
 					pair(1, &FlowTable{
@@ -529,7 +533,7 @@ func TestController_AddNewFlowRules(t *testing.T) {
 			}
 			c := *cInitial // copy
 
-			err := c.AddNewFlowRules(tt.args.nodeId, tt.args.destHostId, tt.args.flowRules)
+			got, err := c.AddNewFlowRules(tt.args.nodeId, tt.args.destHostId, tt.args.flowRules)
 			if tt.wantErr == "" {
 				assert.NoError(t, err)
 			} else {
@@ -539,7 +543,7 @@ func TestController_AddNewFlowRules(t *testing.T) {
 			}
 			// Assert the result
 			if tt.assertSetup != nil {
-				tt.assertSetup(t, &c, cInitial)
+				tt.assertSetup(t, got, &c, cInitial)
 			}
 		})
 	}

@@ -89,7 +89,7 @@ func (c *Controller) AddNewFlowRules(nodeId, destHostId int64, frs []FlowRule) (
 
 	success := false
 	for _, fr := range frs {
-		success = success || ft.AddEntry(destHostId, fr)
+		success = (ft.AddEntry(destHostId, fr) || success)
 	}
 
 	return success, nil

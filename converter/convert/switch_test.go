@@ -9,11 +9,20 @@ import (
 	"gonum.org/v1/gonum/graph"
 	"gonum.org/v1/gonum/graph/simple"
 	"utwente.nl/topology-to-dynetkat-coverter/util"
+	ug "utwente.nl/topology-to-dynetkat-coverter/util/undirected_graph"
 )
 
 var (
-	mockEdge1 graph.Edge  = simple.Edge{F: simple.Node(0), T: simple.Node(1)}
-	mockEdge2 graph.Edge  = simple.Edge{F: simple.Node(1), T: simple.Node(3)}
+	mockEdge1 graph.WeightedEdge = simple.WeightedEdge{
+		F: simple.Node(0),
+		T: simple.Node(1),
+		W: ug.DEFAULT_EDGE_WEIGHT,
+	}
+	mockEdge2 graph.WeightedEdge = simple.WeightedEdge{
+		F: simple.Node(1),
+		T: simple.Node(3),
+		W: ug.DEFAULT_EDGE_WEIGHT,
+	}
 	mockLink1 *Link       = &Link{topoEdge: mockEdge1, fromPort: 10, toPort: 11}
 	mockLink2 *Link       = &Link{topoEdge: mockEdge2, fromPort: 21, toPort: 22}
 	mockC     *Controller = &Controller{
@@ -49,12 +58,20 @@ func TestNewSwitch(t *testing.T) {
 				node: simple.Node(1),
 				links: []*Link{
 					{ // incident
-						topoEdge: simple.Edge{F: simple.Node(4), T: simple.Node(1)},
+						topoEdge: simple.WeightedEdge{
+							F: simple.Node(4),
+							T: simple.Node(1),
+							W: ug.DEFAULT_EDGE_WEIGHT,
+						},
 						fromPort: 7,
 						toPort:   8,
 					},
 					{ // not incident
-						topoEdge: simple.Edge{F: simple.Node(5), T: simple.Node(2)},
+						topoEdge: simple.WeightedEdge{
+							F: simple.Node(5),
+							T: simple.Node(2),
+							W: ug.DEFAULT_EDGE_WEIGHT,
+						},
 						fromPort: 9,
 						toPort:   10,
 					},
@@ -250,22 +267,38 @@ func TestSwitch_GetLinkPorts(t *testing.T) {
 				flowTable:  getMockEmptyFT(),
 				links: []*Link{
 					{
-						topoEdge: simple.Edge{F: simple.Node(1), T: simple.Node(2)},
+						topoEdge: simple.WeightedEdge{
+							F: simple.Node(1),
+							T: simple.Node(2),
+							W: ug.DEFAULT_EDGE_WEIGHT,
+						},
 						fromPort: 3,
 						toPort:   4,
 					},
 					{
-						topoEdge: simple.Edge{F: simple.Node(1), T: simple.Node(3)},
+						topoEdge: simple.WeightedEdge{
+							F: simple.Node(1),
+							T: simple.Node(3),
+							W: ug.DEFAULT_EDGE_WEIGHT,
+						},
 						fromPort: 5,
 						toPort:   6,
 					},
 					{
-						topoEdge: simple.Edge{F: simple.Node(4), T: simple.Node(1)},
+						topoEdge: simple.WeightedEdge{
+							F: simple.Node(4),
+							T: simple.Node(1),
+							W: ug.DEFAULT_EDGE_WEIGHT,
+						},
 						fromPort: 7,
 						toPort:   8,
 					},
 					{
-						topoEdge: simple.Edge{F: simple.Node(5), T: simple.Node(1)},
+						topoEdge: simple.WeightedEdge{
+							F: simple.Node(5),
+							T: simple.Node(1),
+							W: ug.DEFAULT_EDGE_WEIGHT,
+						},
 						fromPort: 9,
 						toPort:   10,
 					},
@@ -282,17 +315,29 @@ func TestSwitch_GetLinkPorts(t *testing.T) {
 				flowTable:  getMockEmptyFT(),
 				links: []*Link{
 					{
-						topoEdge: simple.Edge{F: simple.Node(1), T: simple.Node(3)},
+						topoEdge: simple.WeightedEdge{
+							F: simple.Node(1),
+							T: simple.Node(3),
+							W: ug.DEFAULT_EDGE_WEIGHT,
+						},
 						fromPort: 5,
 						toPort:   6,
 					},
 					{
-						topoEdge: simple.Edge{F: simple.Node(4), T: simple.Node(1)},
+						topoEdge: simple.WeightedEdge{
+							F: simple.Node(4),
+							T: simple.Node(1),
+							W: ug.DEFAULT_EDGE_WEIGHT,
+						},
 						fromPort: 7,
 						toPort:   8,
 					},
 					{
-						topoEdge: simple.Edge{F: simple.Node(1), T: simple.Node(2)},
+						topoEdge: simple.WeightedEdge{
+							F: simple.Node(1),
+							T: simple.Node(2),
+							W: ug.DEFAULT_EDGE_WEIGHT,
+						},
 						fromPort: 3,
 						toPort:   4,
 					},
@@ -310,17 +355,29 @@ func TestSwitch_GetLinkPorts(t *testing.T) {
 				flowTable:  getMockEmptyFT(),
 				links: []*Link{
 					{
-						topoEdge: simple.Edge{F: simple.Node(1), T: simple.Node(2)},
+						topoEdge: simple.WeightedEdge{
+							F: simple.Node(1),
+							T: simple.Node(2),
+							W: ug.DEFAULT_EDGE_WEIGHT,
+						},
 						fromPort: 3,
 						toPort:   4,
 					},
 					{
-						topoEdge: simple.Edge{F: simple.Node(4), T: simple.Node(1)},
+						topoEdge: simple.WeightedEdge{
+							F: simple.Node(4),
+							T: simple.Node(1),
+							W: ug.DEFAULT_EDGE_WEIGHT,
+						},
 						fromPort: 7,
 						toPort:   8,
 					},
 					{
-						topoEdge: simple.Edge{F: simple.Node(1), T: simple.Node(3)},
+						topoEdge: simple.WeightedEdge{
+							F: simple.Node(1),
+							T: simple.Node(3),
+							W: ug.DEFAULT_EDGE_WEIGHT,
+						},
 						fromPort: 5,
 						toPort:   6,
 					},
@@ -338,22 +395,38 @@ func TestSwitch_GetLinkPorts(t *testing.T) {
 				flowTable:  getMockEmptyFT(),
 				links: []*Link{
 					{
-						topoEdge: simple.Edge{F: simple.Node(1), T: simple.Node(2)},
+						topoEdge: simple.WeightedEdge{
+							F: simple.Node(1),
+							T: simple.Node(2),
+							W: ug.DEFAULT_EDGE_WEIGHT,
+						},
 						fromPort: 3,
 						toPort:   4,
 					},
 					{
-						topoEdge: simple.Edge{F: simple.Node(1), T: simple.Node(4)},
+						topoEdge: simple.WeightedEdge{
+							F: simple.Node(1),
+							T: simple.Node(4),
+							W: ug.DEFAULT_EDGE_WEIGHT,
+						},
 						fromPort: 9,
 						toPort:   10,
 					},
 					{
-						topoEdge: simple.Edge{F: simple.Node(4), T: simple.Node(1)},
+						topoEdge: simple.WeightedEdge{
+							F: simple.Node(4),
+							T: simple.Node(1),
+							W: ug.DEFAULT_EDGE_WEIGHT,
+						},
 						fromPort: 7,
 						toPort:   8,
 					},
 					{
-						topoEdge: simple.Edge{F: simple.Node(1), T: simple.Node(3)},
+						topoEdge: simple.WeightedEdge{
+							F: simple.Node(1),
+							T: simple.Node(3),
+							W: ug.DEFAULT_EDGE_WEIGHT,
+						},
 						fromPort: 5,
 						toPort:   6,
 					},
@@ -416,22 +489,38 @@ func Test_validateLinks(t *testing.T) {
 				node: simple.Node(1),
 				links: []*Link{
 					{
-						topoEdge: simple.Edge{F: simple.Node(1), T: simple.Node(2)},
+						topoEdge: simple.WeightedEdge{
+							F: simple.Node(1),
+							T: simple.Node(2),
+							W: ug.DEFAULT_EDGE_WEIGHT,
+						},
 						fromPort: 3,
 						toPort:   4,
 					},
 					{
-						topoEdge: simple.Edge{F: simple.Node(1), T: simple.Node(3)},
+						topoEdge: simple.WeightedEdge{
+							F: simple.Node(1),
+							T: simple.Node(3),
+							W: ug.DEFAULT_EDGE_WEIGHT,
+						},
 						fromPort: 5,
 						toPort:   6,
 					},
 					{
-						topoEdge: simple.Edge{F: simple.Node(4), T: simple.Node(1)},
+						topoEdge: simple.WeightedEdge{
+							F: simple.Node(4),
+							T: simple.Node(1),
+							W: ug.DEFAULT_EDGE_WEIGHT,
+						},
 						fromPort: 7,
 						toPort:   8,
 					},
 					{
-						topoEdge: simple.Edge{F: simple.Node(5), T: simple.Node(1)},
+						topoEdge: simple.WeightedEdge{
+							F: simple.Node(5),
+							T: simple.Node(1),
+							W: ug.DEFAULT_EDGE_WEIGHT,
+						},
 						fromPort: 9,
 						toPort:   10,
 					},
@@ -444,17 +533,29 @@ func Test_validateLinks(t *testing.T) {
 				node: simple.Node(1),
 				links: []*Link{
 					{
-						topoEdge: simple.Edge{F: simple.Node(1), T: simple.Node(2)},
+						topoEdge: simple.WeightedEdge{
+							F: simple.Node(1),
+							T: simple.Node(2),
+							W: ug.DEFAULT_EDGE_WEIGHT,
+						},
 						fromPort: 3,
 						toPort:   4,
 					},
 					{
-						topoEdge: simple.Edge{F: simple.Node(1), T: simple.Node(3)},
+						topoEdge: simple.WeightedEdge{
+							F: simple.Node(1),
+							T: simple.Node(3),
+							W: ug.DEFAULT_EDGE_WEIGHT,
+						},
 						fromPort: 5,
 						toPort:   6,
 					},
 					{
-						topoEdge: simple.Edge{F: simple.Node(5), T: simple.Node(4)},
+						topoEdge: simple.WeightedEdge{
+							F: simple.Node(5),
+							T: simple.Node(4),
+							W: ug.DEFAULT_EDGE_WEIGHT,
+						},
 						fromPort: 9,
 						toPort:   10,
 					},
@@ -468,7 +569,11 @@ func Test_validateLinks(t *testing.T) {
 				node: simple.Node(1),
 				links: []*Link{
 					{
-						topoEdge: simple.Edge{F: simple.Node(1), T: simple.Node(2)},
+						topoEdge: simple.WeightedEdge{
+							F: simple.Node(1),
+							T: simple.Node(2),
+							W: ug.DEFAULT_EDGE_WEIGHT,
+						},
 						fromPort: 3,
 						toPort:   4,
 					},

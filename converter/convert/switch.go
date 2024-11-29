@@ -1,7 +1,9 @@
 package convert
 
 import (
+	om "github.com/wk8/go-ordered-map/v2"
 	"gonum.org/v1/gonum/graph"
+	"gonum.org/v1/gonum/graph/simple"
 	"utwente.nl/topology-to-dynetkat-coverter/util"
 )
 
@@ -77,4 +79,25 @@ func (s *Switch) GetLinkPorts(otherNodeId int64) (int64, int64, error) {
 		}
 	}
 	return 0, 0, util.NewError(util.ErrNoLinkBetweenSwitches)
+}
+
+func (s *Switch) modifyLinkCosts(edgeToNewCost om.OrderedMap[util.I64Tup, float64]) error {
+	for _, link := range s.links {
+		fId := link.topoEdge.From().ID()
+		tId := link.topoEdge.To().ID()
+		key := util.I64Tup{Fst: fId, Snd: tId}
+
+		newCost, exists := edgeToNewCost.Get(key)
+		if !exists {
+			return util.NewError(util.ErrNoEdgeCostFound, fId, tId)
+		}
+
+		link.topoEdge = simple.WeightedEdge{
+			F: link.topoEdge.From(),
+			T: link.topoEdge.To(),
+			W: newCost,
+		}
+	}
+
+	return nil
 }

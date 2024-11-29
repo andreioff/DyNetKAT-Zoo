@@ -70,27 +70,29 @@ func (c *Controller) FindSwitch(nodeId int64) *Switch {
 /*
 Adds flow rules to the new flow table of the switch with the given node id, creating the
 new flow table if it doesn't exist. The flow table is created only if new flow rules exist.
+Returns true if at least one flow rule was successfully added, and false otherwise.
 */
-func (c *Controller) AddNewFlowRules(nodeId, destHostId int64, frs []FlowRule) error {
+func (c *Controller) AddNewFlowRules(nodeId, destHostId int64, frs []FlowRule) (bool, error) {
 	sw := c.FindSwitch(nodeId)
 	if sw == nil {
-		return util.NewError(util.ErrNoSwitchWithNodeId, nodeId)
+		return false, util.NewError(util.ErrNoSwitchWithNodeId, nodeId)
 	}
 
 	ft, exists := c.newFlowTables.Get(nodeId)
 	if !exists {
 		if !newEntriesExist(sw.FlowTable(), destHostId, frs) {
-			return nil
+			return false, nil
 		}
 		c.newFlowTables.Set(nodeId, sw.FlowTable().Copy())
 		ft, _ = c.newFlowTables.Get(nodeId)
 	}
 
+	success := false
 	for _, fr := range frs {
-		ft.AddEntry(destHostId, fr)
+		success = success || ft.AddEntry(destHostId, fr)
 	}
 
-	return nil
+	return success, nil
 }
 
 func newEntriesExist(

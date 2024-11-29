@@ -8,7 +8,8 @@ import (
 	om "github.com/wk8/go-ordered-map/v2"
 )
 
-const SEED int64 = 31
+// const SEED int64 = 31
+const SEED int64 = 3
 
 var randGen rand.Rand
 
@@ -70,4 +71,18 @@ func RandomFromArrayWithReplc[OrdArr ~[]E, E cmp.Ordered](arr OrdArr, picksNr ui
 	}
 
 	return picks
+}
+
+func RandomInts(n, minVal, maxVal int) []int {
+	if n < 1 || maxVal < 1 || minVal < 0 || minVal >= maxVal {
+		return []int{}
+	}
+
+	arr := []int{}
+	for range n {
+		randV := randGen.Intn(maxVal - minVal)
+		arr = append(arr, minVal+randV)
+	}
+
+	return arr
 }

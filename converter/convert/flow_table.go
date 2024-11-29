@@ -34,19 +34,22 @@ func NewFlowTable() *FlowTable {
 	}
 }
 
-func (ft *FlowTable) AddEntry(destHostId int64, fr FlowRule) {
+// Returns true if the entry was successfully added to the flow table,
+// and false otherwise.
+func (ft *FlowTable) AddEntry(destHostId int64, fr FlowRule) bool {
 	// do not add duplicate entries
 	if ft.hasEntry(destHostId, fr) {
-		return
+		return false
 	}
 
 	destFrsPair := ft.entries.GetPair(destHostId)
 	if destFrsPair == nil {
 		ft.entries.Set(destHostId, []FlowRule{fr})
-		return
+		return true
 	}
 
 	destFrsPair.Value = append(destFrsPair.Value, fr)
+	return true
 }
 
 func (ft *FlowTable) hasEntry(hostId int64, target FlowRule) bool {

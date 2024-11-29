@@ -6,12 +6,12 @@ import (
 )
 
 type Link struct {
-	topoEdge graph.Edge
+	topoEdge graph.WeightedEdge
 	fromPort int64
 	toPort   int64
 }
 
-func NewLink(edge graph.Edge, fromPort, toPort int64) (*Link, error) {
+func NewLink(edge graph.WeightedEdge, fromPort, toPort int64) (*Link, error) {
 	if edge == nil {
 		return &Link{}, util.NewError(util.ErrNilArgument, "edge")
 	}

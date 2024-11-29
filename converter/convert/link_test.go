@@ -8,13 +8,14 @@ import (
 	"gonum.org/v1/gonum/graph"
 	"gonum.org/v1/gonum/graph/simple"
 	"utwente.nl/topology-to-dynetkat-coverter/util"
+	ug "utwente.nl/topology-to-dynetkat-coverter/util/undirected_graph"
 )
 
 func TestConvert_NewLink(t *testing.T) {
-	var simpleEdge graph.Edge = simple.Edge{F: simple.Node(0), T: simple.Node(0)}
+	var simpleWEdge graph.WeightedEdge = simple.WeightedEdge{F: simple.Node(0), T: simple.Node(0), W: ug.DEFAULT_EDGE_WEIGHT}
 
 	cases := map[string]struct {
-		edge        graph.Edge
+		edge        graph.WeightedEdge
 		fromPort    int64
 		toPort      int64
 		assertSetup func(*testing.T, *Link, error)
@@ -29,24 +30,24 @@ func TestConvert_NewLink(t *testing.T) {
 			},
 		},
 		"Valid link [Success]": {
-			edge:     simpleEdge,
+			edge:     simpleWEdge,
 			fromPort: -1,
 			toPort:   10,
 			assertSetup: func(t *testing.T, link *Link, err error) {
 				assert.NoError(t, err)
 				assert.NotNil(t, link)
-				assert.EqualValues(t, simpleEdge, link.topoEdge)
+				assert.EqualValues(t, simpleWEdge, link.topoEdge)
 				assert.Equal(t, int64(-1), link.fromPort)
 				assert.Equal(t, int64(10), link.toPort)
 			},
 		},
 		"Link Getters [Success]": {
-			edge:     simpleEdge,
+			edge:     simpleWEdge,
 			fromPort: 4,
 			toPort:   -8,
 			assertSetup: func(t *testing.T, link *Link, err error) {
 				assert.NotNil(t, link.TopoEdge())
-				assert.EqualValues(t, simpleEdge, link.TopoEdge())
+				assert.EqualValues(t, simpleWEdge, link.TopoEdge())
 				assert.Equal(t, int64(4), link.FromPort())
 				assert.Equal(t, int64(-8), link.ToPort())
 			},
@@ -70,29 +71,41 @@ func TestLink_IsIncidentToNode(t *testing.T) {
 	}
 	tests := []struct {
 		name     string
-		topoEdge graph.Edge
+		topoEdge graph.WeightedEdge
 		args     args
 		want     bool
 	}{
 		{
-			name:     "Non-existent node id [Success]",
-			topoEdge: simple.Edge{F: simple.Node(5), T: simple.Node(1)},
+			name: "Non-existent node id [Success]",
+			topoEdge: simple.WeightedEdge{
+				F: simple.Node(5),
+				T: simple.Node(1),
+				W: ug.DEFAULT_EDGE_WEIGHT,
+			},
 			args: args{
 				nodeId: 4,
 			},
 			want: false,
 		},
 		{
-			name:     "From node id [Success]",
-			topoEdge: simple.Edge{F: simple.Node(5), T: simple.Node(1)},
+			name: "From node id [Success]",
+			topoEdge: simple.WeightedEdge{
+				F: simple.Node(5),
+				T: simple.Node(1),
+				W: ug.DEFAULT_EDGE_WEIGHT,
+			},
 			args: args{
 				nodeId: 5,
 			},
 			want: true,
 		},
 		{
-			name:     "To node id [Success]",
-			topoEdge: simple.Edge{F: simple.Node(5), T: simple.Node(1)},
+			name: "To node id [Success]",
+			topoEdge: simple.WeightedEdge{
+				F: simple.Node(5),
+				T: simple.Node(1),
+				W: ug.DEFAULT_EDGE_WEIGHT,
+			},
 			args: args{
 				nodeId: 1,
 			},

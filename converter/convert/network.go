@@ -4,6 +4,7 @@ import (
 	om "github.com/wk8/go-ordered-map/v2"
 	"gonum.org/v1/gonum/graph"
 	"gonum.org/v1/gonum/graph/path"
+	"gonum.org/v1/gonum/graph/simple"
 	"utwente.nl/topology-to-dynetkat-coverter/util"
 )
 
@@ -47,10 +48,6 @@ func NewNetwork(topo util.Graph) (*Network, error) {
 	}, nil
 }
 
-func (n *Network) PortNr() int64 {
-	return n.portNr
-}
-
 func (n *Network) Switches() []*Switch {
 	return n.switches
 }
@@ -69,6 +66,10 @@ func (n *Network) GetSwitch(nodeId int64) (*Switch, error) {
 		return &Switch{}, util.NewError(util.ErrNoSwitchWithNodeId, nodeId)
 	}
 	return sw, nil
+}
+
+func (n *Network) TopoEdgesLen() int {
+	return n.topology.Edges().Len()
 }
 
 func (n *Network) assignHosts(hostsNr uint) error {
@@ -308,14 +309,15 @@ func makeLinks(topo util.Graph, portNr *int64) (om.OrderedMap[util.I64Tup, *Link
 	}
 
 	edgeTolink := *om.New[util.I64Tup, *Link]()
-	iter := topo.Edges()
+	iter := topo.WeightedEdges()
 	for iter.Next() {
-		newLink, err := NewLink(iter.Edge(), *portNr, *portNr+1)
+		e := iter.WeightedEdge()
+		newLink, err := NewLink(e, *portNr, *portNr+1)
 		if err != nil {
 			return *om.New[util.I64Tup, *Link](), err
 		}
 
-		edgeId := util.NewI64Tup(iter.Edge().From().ID(), iter.Edge().To().ID())
+		edgeId := util.NewI64Tup(e.From().ID(), e.To().ID())
 		edgeTolink.Set(edgeId, newLink)
 		*portNr += 2
 	}
@@ -385,4 +387,35 @@ func computeShortestPaths(
 	}
 
 	return switchPaths, nil
+}
+
+func (n *Network) ModifyLinkCosts(newCosts []int) error {
+	if len(newCosts) != n.topology.Edges().Len() {
+		return util.NewError(util.ErrArrayLenMustMatchEdgesNo)
+	}
+
+	edgeToNewCost := *om.New[util.I64Tup, float64]()
+	iter := n.topology.WeightedEdges()
+
+	for i := 0; iter.Next(); i++ {
+		e := iter.WeightedEdge()
+		newCost := float64(newCosts[i])
+		n.topology.SetWeightedEdge(simple.WeightedEdge{F: e.From(), T: e.To(), W: newCost})
+		edgeToNewCost.Set(util.NewI64Tup(e.From().ID(), e.To().ID()), newCost)
+	}
+
+	for _, sw := range n.switches {
+		err := sw.modifyLinkCosts(edgeToNewCost)
+		if err != nil {
+			return err
+		}
+	}
+
+	newShortestPaths, err := computeShortestPaths(n.topology, n.switches)
+	if err != nil {
+		return err
+	}
+	n.shortestPaths = newShortestPaths
+
+	return nil
 }

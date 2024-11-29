@@ -42,7 +42,8 @@ func main() {
 
 	network, err := behavior.NewNetworkWithBehavior(
 		topo,
-		&behavior.OutsideHostConn{},
+		&behavior.LinkCostChanging{},
+		// &behavior.OutsideHostConn{},
 	)
 	if err != nil {
 		log.Fatalln(err)

@@ -11,7 +11,6 @@ import (
 const (
 	DIR        = "../topologyzoo/sources/graphml/"
 	OUTPUT_DIR = "./output/"
-	HOSTS_NR   = 5
 )
 
 var NETWORK_IDS []string = []string{

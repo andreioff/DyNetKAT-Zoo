@@ -24,6 +24,8 @@ var NETWORK_IDS []string = []string{
 var NETWORK_ID string = NETWORK_IDS[1]
 
 func main() {
+	util.SetRandGenSeed(3)
+
 	graphMLs, err := util.GetGraphMLs(DIR)
 	if err != nil {
 		log.Fatalf("Failed to load graphs from directory: %s\n%s", DIR, err.Error())

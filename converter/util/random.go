@@ -8,13 +8,16 @@ import (
 	om "github.com/wk8/go-ordered-map/v2"
 )
 
-// const SEED int64 = 31
-const SEED int64 = 3
+const DEFAULT_SEED int64 = 3
 
 var randGen rand.Rand
 
 func init() {
-	randGen = *rand.New(rand.NewSource(SEED))
+	randGen = *rand.New(rand.NewSource(DEFAULT_SEED))
+}
+
+func SetRandGenSeed(seed int64) {
+	randGen = *rand.New(rand.NewSource(seed))
 }
 
 /*

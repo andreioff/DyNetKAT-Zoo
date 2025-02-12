@@ -7,7 +7,7 @@ import (
 )
 
 type BehaviorConfig struct {
-	Host_nr          uint
+	Hosts_nr         uint
 	Outside_hosts_nr uint
 	Controllers_nr   uint
 }

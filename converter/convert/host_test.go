@@ -21,12 +21,12 @@ func TestConvert_NewHost(t *testing.T) {
 	cases := map[string]struct {
 		switchPort  int64
 		sw          *Switch
-		assertSetup func(*testing.T, int64, *Host, error)
+		assertSetup func(*testing.T, *Host, error)
 	}{
 		"Nil switch [Validation error]": {
 			switchPort: 0,
 			sw:         nil,
-			assertSetup: func(t *testing.T, nextHostId int64, host *Host, err error) {
+			assertSetup: func(t *testing.T, host *Host, err error) {
 				assert.NotNil(t, host)
 				assert.EqualError(t, err, fmt.Sprintf(util.ErrNilArgument, "sw"))
 			},
@@ -34,11 +34,9 @@ func TestConvert_NewHost(t *testing.T) {
 		"Valid Host [Success]": {
 			switchPort: 4,
 			sw:         mockSw,
-			assertSetup: func(t *testing.T, nextHostId int64, host *Host, err error) {
+			assertSetup: func(t *testing.T, host *Host, err error) {
 				assert.NoError(t, err)
 				assert.NotNil(t, host)
-
-				assert.Greater(t, nextHostId, host.id)
 
 				assert.Equal(t, int64(4), host.switchPort)
 
@@ -49,9 +47,7 @@ func TestConvert_NewHost(t *testing.T) {
 		"Host Getters [Success]": {
 			switchPort: -3,
 			sw:         mockSw,
-			assertSetup: func(t *testing.T, nextHostId int64, host *Host, err error) {
-				assert.Greater(t, nextHostId, host.ID())
-
+			assertSetup: func(t *testing.T, host *Host, err error) {
 				assert.Equal(t, int64(-3), host.SwitchPort())
 
 				assert.NotNil(t, host.Switch())
@@ -62,10 +58,10 @@ func TestConvert_NewHost(t *testing.T) {
 
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
-			host, err := NewHost(tc.switchPort, tc.sw)
+			host, err := NewHost(0, tc.switchPort, tc.sw)
 			// Assert the result
 			if tc.assertSetup != nil {
-				tc.assertSetup(t, hostId, host, err)
+				tc.assertSetup(t, host, err)
 			}
 		})
 	}

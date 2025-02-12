@@ -5,16 +5,11 @@ import (
 	"utwente.nl/topology-to-dynetkat-coverter/util"
 )
 
-var controllerId int64
-
-func init() {
-	controllerId = 0
-}
-
 type Controller struct {
-	id            int64
-	switches      []*Switch
-	newFlowTables om.OrderedMap[int64, *FlowTable]
+	id             int64
+	switches       []*Switch
+	newFrSequences []*FlowRuleSequence
+	newFlowTables  om.OrderedMap[int64, *FlowTable]
 }
 
 func (c *Controller) ID() int64 {
@@ -29,17 +24,20 @@ func (c *Controller) NewFlowTables() *om.OrderedMap[int64, *FlowTable] {
 	return &c.newFlowTables
 }
 
-func NewController(switches []*Switch) (*Controller, error) {
+func (c *Controller) NewFlowRuleSequences() []*FlowRuleSequence {
+	return c.newFrSequences
+}
+
+func NewController(id int64, switches []*Switch) (*Controller, error) {
 	if err := validateSwitches(switches); err != nil {
 		return &Controller{}, err
 	}
 
 	c := &Controller{
-		id:            controllerId,
+		id:            id,
 		switches:      switches,
 		newFlowTables: *om.New[int64, *FlowTable](),
 	}
-	controllerId++
 
 	for _, s := range switches {
 		s.SetController(c)
@@ -126,4 +124,13 @@ func newEntriesExist(
 		}
 	}
 	return false
+}
+
+func (c *Controller) AddNewFlowRuleSequence(seq *FlowRuleSequence) error {
+	if seq == nil {
+		return util.NewError(util.ErrNilArgument, "seq")
+	}
+
+	c.newFrSequences = append(c.newFrSequences, seq)
+	return nil
 }

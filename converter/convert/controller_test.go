@@ -23,17 +23,15 @@ func TestNewController(t *testing.T) {
 		name        string
 		args        args
 		wantErr     string
-		assertSetup func(*testing.T, int64, *Controller)
+		assertSetup func(*testing.T, *Controller)
 	}{
 		{
 			name: "No switches [Success]",
 			args: args{
 				switches: []*Switch{},
 			},
-			assertSetup: func(t *testing.T, nextContId int64, c *Controller) {
+			assertSetup: func(t *testing.T, c *Controller) {
 				assert.NotNil(t, c)
-
-				assert.Greater(t, nextContId, c.id)
 
 				assert.ElementsMatch(t, []*Switch{}, c.switches)
 				tu.AssertEqualMaps(t, om.New[K, V](), &c.newFlowTables)
@@ -55,10 +53,8 @@ func TestNewController(t *testing.T) {
 					},
 				},
 			},
-			assertSetup: func(t *testing.T, nextContId int64, c *Controller) {
+			assertSetup: func(t *testing.T, c *Controller) {
 				assert.NotNil(t, c)
-
-				assert.Greater(t, nextContId, c.id)
 
 				tu.AssertEqualMaps(t, om.New[K, V](), &c.newFlowTables)
 				assert.ElementsMatch(t, []*Switch{
@@ -86,10 +82,8 @@ func TestNewController(t *testing.T) {
 					},
 				},
 			},
-			assertSetup: func(t *testing.T, nextContId int64, c *Controller) {
+			assertSetup: func(t *testing.T, c *Controller) {
 				assert.NotNil(t, c)
-
-				assert.Greater(t, nextContId, c.ID())
 
 				tu.AssertEqualMaps(t, om.New[K, V](), c.NewFlowTables())
 				assert.ElementsMatch(t, []*Switch{
@@ -114,14 +108,14 @@ func TestNewController(t *testing.T) {
 				},
 			},
 			wantErr: fmt.Sprintf(util.ErrNilInArray, "switches"),
-			assertSetup: func(t *testing.T, nextContId int64, c *Controller) {
+			assertSetup: func(t *testing.T, c *Controller) {
 				assert.NotNil(t, c)
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := NewController(tt.args.switches)
+			got, err := NewController(0, tt.args.switches)
 			if tt.wantErr == "" {
 				assert.NoError(t, err)
 			} else {
@@ -130,7 +124,7 @@ func TestNewController(t *testing.T) {
 			}
 			// Assert the result
 			if tt.assertSetup != nil {
-				tt.assertSetup(t, controllerId, got)
+				tt.assertSetup(t, got)
 			}
 		})
 	}

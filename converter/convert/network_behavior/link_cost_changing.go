@@ -21,7 +21,7 @@ func (lcc *LinkCostChanging) ModifyNetwork(n *convert.Network, config BehaviorCo
 		return util.NewError(util.ErrNilArgument, "n")
 	}
 
-	err := n.AddAndConnectHosts(config.Host_nr)
+	err := n.AddAndConnectHosts(config.Hosts_nr)
 	if err != nil {
 		return err
 	}

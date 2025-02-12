@@ -42,7 +42,7 @@ func main() {
 	}
 
 	config := behavior.BehaviorConfig{
-		Host_nr:          2,
+		Hosts_nr:         2,
 		Outside_hosts_nr: 1,
 		Controllers_nr:   1,
 	}

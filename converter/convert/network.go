@@ -9,6 +9,7 @@ import (
 )
 
 type Network struct {
+	nextHostId    int64
 	topology      util.Graph
 	shortestPaths om.OrderedMap[util.I64Tup, []*Switch] // maps a tuple of topology node ids to a switch path
 
@@ -39,6 +40,7 @@ func NewNetwork(topo util.Graph) (*Network, error) {
 	}
 
 	return &Network{
+		nextHostId:    0,
 		topology:      topo,
 		shortestPaths: shortesPaths,
 		switches:      switches,
@@ -68,6 +70,15 @@ func (n *Network) GetSwitch(nodeId int64) (*Switch, error) {
 	return sw, nil
 }
 
+func (n *Network) GetController(cid int64) (*Controller, error) {
+	for _, c := range n.controllers {
+		if c.id == cid {
+			return c, nil
+		}
+	}
+	return &Controller{}, util.NewError(util.ErrNoContWithGivenId, cid)
+}
+
 func (n *Network) TopoEdgesLen() int {
 	return n.topology.Edges().Len()
 }
@@ -92,7 +103,9 @@ func (n *Network) CreateHosts(hostsNr uint) ([]*Host, error) {
 	}
 
 	for _, randSw := range randSws {
-		newHost, err := NewHost(n.portNr, randSw)
+		newHost, err := NewHost(n.nextHostId, n.portNr, randSw)
+		n.nextHostId++
+
 		if err != nil {
 			return []*Host{}, err
 		}
@@ -173,7 +186,11 @@ func (n *Network) GetFlowRulesForSwitchPath(
 	srcDestTup := util.NewI64Tup(srcSw.topoNode.ID(), destSw.topoNode.ID())
 	path, exists := n.shortestPaths.Get(srcDestTup)
 	if !exists {
-		return *om.New[int64, []FlowRule](), util.NewError(util.ErrNoPathBetweenSwitches)
+		return *om.New[int64, []FlowRule](), util.NewError(
+			util.ErrNoPathBetweenSwitches,
+			srcDestTup.Fst,
+			srcDestTup.Snd,
+		)
 	}
 
 	entries := *om.New[int64, []FlowRule]()
@@ -258,7 +275,7 @@ func (n *Network) AddControllers(controllersNr uint) error {
 			switches = append(switches, sw)
 		}
 
-		c, err := NewController(switches)
+		c, err := NewController(int64(len(n.controllers)), switches)
 		if err != nil {
 			return err
 		}
@@ -375,9 +392,14 @@ func computeShortestPaths(
 
 		for j := range len(switches) {
 			sw2Id := switches[j].topoNode.ID()
-			nodePath, _, _ := nodePaths.Between(sw1Id, sw2Id)
+			nodePaths, _ := nodePaths.AllBetween(sw1Id, sw2Id)
+			if nodePaths == nil {
+				return *om.New[util.I64Tup, []*Switch](), util.NewError(
+					util.ErrFailedToComputePath, sw1Id, sw2Id,
+				)
+			}
 
-			swPath, err := nodePathToSwitchPath(nodePath, nodeToSwitch)
+			swPath, err := nodePathToSwitchPath(nodePaths[0], nodeToSwitch)
 			if err != nil {
 				return *om.New[util.I64Tup, []*Switch](), err
 			}

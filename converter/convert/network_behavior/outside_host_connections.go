@@ -5,24 +5,32 @@ import (
 	"utwente.nl/topology-to-dynetkat-coverter/util"
 )
 
+/*
+Given an empty network, it establishes the initial state of the network
+by populating the flow tables of the corresponding switches to connect
+a given number of hosts with each other. From this initial state,
+the controllers receive new flow tables for the switches in the network
+to establish connections between new, unconnected hosts and the existing
+ones in the network.
+*/
 type OutsideHostConn struct{}
 
-func (ohc *OutsideHostConn) ModifyNetwork(n *convert.Network) error {
+func (ohc *OutsideHostConn) ModifyNetwork(n *convert.Network, config BehaviorConfig) error {
 	if n == nil {
 		return util.NewError(util.ErrNilArgument, "n")
 	}
 
-	err := n.AddAndConnectHosts(HOSTS_NR)
+	err := n.AddAndConnectHosts(config.Host_nr)
 	if err != nil {
 		return err
 	}
 
-	err = n.AddControllers(CONTROLLERS_NR)
+	err = n.AddControllers(config.Controllers_nr)
 	if err != nil {
 		return err
 	}
 
-	newHosts, err := n.CreateHosts(OUTSIDE_HOSTS_NR)
+	newHosts, err := n.CreateHosts(config.Outside_hosts_nr)
 	if err != nil {
 		return err
 	}

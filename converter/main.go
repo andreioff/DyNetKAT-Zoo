@@ -41,10 +41,16 @@ func main() {
 		log.Fatalf("Topology with name '%s' is either invalid or does not exist\n", NETWORK_ID)
 	}
 
+	config := behavior.BehaviorConfig{
+		Host_nr:          2,
+		Outside_hosts_nr: 1,
+		Controllers_nr:   1,
+	}
 	network, err := behavior.NewNetworkWithBehavior(
 		topo,
 		&behavior.LinkCostChanging{},
 		// &behavior.OutsideHostConn{},
+		config,
 	)
 	if err != nil {
 		log.Fatalln(err)

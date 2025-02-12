@@ -6,24 +6,28 @@ import (
 	"utwente.nl/topology-to-dynetkat-coverter/util"
 )
 
-const (
-	HOSTS_NR         = 2
-	OUTSIDE_HOSTS_NR = 1
-	CONTROLLERS_NR   = 1
-)
-
-type Behavior interface {
-	ModifyNetwork(n *convert.Network) error
+type BehaviorConfig struct {
+	Host_nr          uint
+	Outside_hosts_nr uint
+	Controllers_nr   uint
 }
 
-func NewNetworkWithBehavior(topo util.Graph, b Behavior) (*convert.Network, error) {
+type Behavior interface {
+	ModifyNetwork(n *convert.Network, config BehaviorConfig) error
+}
+
+func NewNetworkWithBehavior(
+	topo util.Graph,
+	b Behavior,
+	config BehaviorConfig,
+) (*convert.Network, error) {
 	newNet, err := convert.NewNetwork(topo)
 	if err != nil {
 		return newNet, err
 	}
 
-	net := *newNet              // copy the value at the pointer's memory location
-	err = b.ModifyNetwork(&net) // apply the modification on the copy
+	net := *newNet                      // copy the value at the pointer's memory location
+	err = b.ModifyNetwork(&net, config) // apply the modification on the copy
 	if err != nil {
 		// if something goes bad, return the initial, empty network
 		return newNet, err

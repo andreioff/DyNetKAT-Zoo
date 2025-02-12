@@ -16,17 +16,17 @@ const (
 
 type LinkCostChanging struct{}
 
-func (lcc *LinkCostChanging) ModifyNetwork(n *convert.Network) error {
+func (lcc *LinkCostChanging) ModifyNetwork(n *convert.Network, config BehaviorConfig) error {
 	if n == nil {
 		return util.NewError(util.ErrNilArgument, "n")
 	}
 
-	err := n.AddAndConnectHosts(HOSTS_NR)
+	err := n.AddAndConnectHosts(config.Host_nr)
 	if err != nil {
 		return err
 	}
 
-	err = n.AddControllers(CONTROLLERS_NR)
+	err = n.AddControllers(config.Controllers_nr)
 	if err != nil {
 		return err
 	}

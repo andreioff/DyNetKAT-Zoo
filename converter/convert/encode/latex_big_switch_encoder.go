@@ -105,8 +105,8 @@ func (f LatexBigSwitchEncoder) encodeLinkTerm(ei EncodingInfo) string {
 		linksFt.Extend(pair.Value.Filter(isLinkPred))
 	}
 
-	for _, c := range ei.usedContFTs {
-		for pair := c.Oldest(); pair != nil; pair = pair.Next() {
+	for _, update := range ei.usedContUpdates {
+		for pair := update.flowTables.Oldest(); pair != nil; pair = pair.Next() {
 			linksFt.Extend(pair.Value.Filter(isLinkPred))
 		}
 	}
@@ -284,7 +284,7 @@ func (f LatexBigSwitchEncoder) encodeSDNTerm(
 
 	sb.WriteString(f.encodeBigSwitchName(SW_BASE_NAME, ei.usedSwitchFTs.Len(), -1, ""))
 
-	for i := range ei.usedContFTs {
+	for i := range ei.usedContUpdates {
 		sb.WriteString(fmt.Sprintf("%s %s%d", f.sym.PAR, CONTROLLER_BASE_NAME, i))
 	}
 
@@ -310,7 +310,8 @@ func (f LatexBigSwitchEncoder) encodeController(
 	fmtCommStrs := []string{}
 	cName := fmt.Sprintf("%s%d", CONTROLLER_BASE_NAME, cIndex)
 
-	for pair := ei.usedContFTs[cIndex].Oldest(); pair != nil; pair = pair.Next() {
+	update := ei.usedContUpdates[cIndex]
+	for pair := update.flowTables.Oldest(); pair != nil; pair = pair.Next() {
 		swIndex, _ := ei.nodeIdToIndex.Get(pair.Key)
 		commStr := f.encodeControllerPolicyComm(cName, swIndex)
 		fmtCommStrs = append(fmtCommStrs, commStr)

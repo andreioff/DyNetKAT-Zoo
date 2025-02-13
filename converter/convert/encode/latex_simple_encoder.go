@@ -143,7 +143,7 @@ func (f LatexSimpleEncoder) encodeSDNTerm(ei EncodingInfo) string {
 		prefix = f.sym.PAR
 	}
 
-	for i := range ei.usedContFTs {
+	for i := range ei.usedContUpdates {
 		sb.WriteString(prefix + fmt.Sprintf("%s%d", CONTROLLER_BASE_NAME, i))
 	}
 	content := util.BreakColumn(sb.String(), THIRD_COL_MAX_LEN, NEW_LN+"& & ")
@@ -162,7 +162,8 @@ func (f LatexSimpleEncoder) encodeController(ei EncodingInfo, cIndex int) string
 	fmtCommStrs := []string{}
 	cName := fmt.Sprintf("%s%d", CONTROLLER_BASE_NAME, cIndex)
 
-	for pair := ei.usedContFTs[cIndex].Oldest(); pair != nil; pair = pair.Next() {
+	update := ei.usedContUpdates[cIndex]
+	for pair := update.flowTables.Oldest(); pair != nil; pair = pair.Next() {
 		swIndex, _ := ei.nodeIdToIndex.Get(pair.Key)
 		commStr := f.encodeCommunication(cName, swIndex, false)
 		fmtCommStrs = append(fmtCommStrs, commStr)

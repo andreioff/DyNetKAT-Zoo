@@ -6,24 +6,29 @@ import (
 	"utwente.nl/topology-to-dynetkat-coverter/util"
 )
 
+type ControllerUpdate struct {
+	flowTables  om.OrderedMap[int64, *convert.FlowTable]
+	frSequences []*convert.FlowRuleSequence
+}
+
 type EncodingInfo struct {
-	nodeIdToIndex om.OrderedMap[int64, int]                  // maps switch node id to index
-	usedSwitchFTs om.OrderedMap[int64, *convert.FlowTable]   // maps switch node id to flow table of switch
-	usedContFTs   []om.OrderedMap[int64, *convert.FlowTable] // maps switch node id to new flow table
+	nodeIdToIndex   om.OrderedMap[int64, int]                // maps switch node id to index
+	usedSwitchFTs   om.OrderedMap[int64, *convert.FlowTable] // maps switch node id to flow table of switch
+	usedContUpdates []ControllerUpdate                       // maps switch node id to new flow table
 }
 
 func NewEncodingInfo(n *convert.Network) (EncodingInfo, error) {
 	usedSwitchFTs := getUsedSwitchesFTs(n.Switches())
-	usedControllerFTs := getUsedControllers(n.Controllers())
+	usedContUpdates := getUsedControllers(n.Controllers())
 
-	if usedSwitchFTs.Len() == 0 || len(usedControllerFTs) == 0 {
+	if usedSwitchFTs.Len() == 0 || len(usedContUpdates) == 0 {
 		return EncodingInfo{}, util.NewError(util.ErrNoSwsOrContsUsed)
 	}
 
 	return EncodingInfo{
-		nodeIdToIndex: getNodeIdToIndex(n.Switches(), usedSwitchFTs),
-		usedSwitchFTs: usedSwitchFTs,
-		usedContFTs:   usedControllerFTs,
+		nodeIdToIndex:   getNodeIdToIndex(n.Switches(), usedSwitchFTs),
+		usedSwitchFTs:   usedSwitchFTs,
+		usedContUpdates: usedContUpdates,
 	}, nil
 }
 
@@ -63,21 +68,24 @@ func getUsedSwitchesFTs(switches []*convert.Switch) om.OrderedMap[int64, *conver
 
 func getUsedControllers(
 	controllers []*convert.Controller,
-) []om.OrderedMap[int64, *convert.FlowTable] {
-	usedControllerFTs := []om.OrderedMap[int64, *convert.FlowTable]{}
+) []ControllerUpdate {
+	usedControllerUpdates := []ControllerUpdate{}
 
 	for _, c := range controllers {
-		if c.NewFlowTables().Len() > 0 {
-			usedControllerFTs = append(usedControllerFTs, *c.NewFlowTables())
+		if c.NewFlowTables().Len() > 0 || len(c.NewFlowRuleSequences()) > 0 {
+			usedControllerUpdates = append(usedControllerUpdates, ControllerUpdate{
+				flowTables:  *c.NewFlowTables(),
+				frSequences: c.NewFlowRuleSequences(),
+			})
 		}
 	}
 
-	return usedControllerFTs
+	return usedControllerUpdates
 }
 
 func (ei EncodingInfo) FindNewFT(nodeId int64) (*convert.FlowTable, bool) {
-	for _, newFTs := range ei.usedContFTs {
-		newFt, exists := newFTs.Get(nodeId)
+	for _, update := range ei.usedContUpdates {
+		newFt, exists := update.flowTables.Get(nodeId)
 		if exists {
 			return newFt, true
 		}

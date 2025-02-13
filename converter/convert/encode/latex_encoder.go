@@ -79,7 +79,7 @@ func (f LatexEncoder) encodeSwitches(ei EncodingInfo) string {
 func (f LatexEncoder) encodeControllers(ei EncodingInfo) string {
 	var sb strings.Builder
 
-	for i := range ei.usedContFTs {
+	for i := range ei.usedContUpdates {
 		cStr := f.encodeController(ei, i)
 		sb.WriteString(cStr)
 		sb.WriteString(NEW_LN)

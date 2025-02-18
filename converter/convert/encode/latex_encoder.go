@@ -7,7 +7,7 @@ import (
 	"utwente.nl/topology-to-dynetkat-coverter/util"
 )
 
-var LATEX_SYMBOLS = SymbolEncoding{
+var DYNETKAT_LATEX_SYMBOLS = SymbolEncoding{
 	ONE:    "1",
 	ZERO:   "0",
 	EQ:     "=",
@@ -45,12 +45,12 @@ func NewLatexEncoder(proactiveSwitch bool, cf CustomFunctions) LatexEncoder {
 	}
 }
 
-func (f LatexEncoder) Encode(ei EncodingInfo) string {
+func (f LatexEncoder) Encode(ei EncodingInfo) (string, error) {
 	fmtSwitches := f.encodeSwitches(ei)
 	fmtControllers := f.encodeControllers(ei)
 
 	arrayBlockStr := fmtSwitches + fmtControllers + f.encodeInformation(ei)
-	return f.splitIntoPages(arrayBlockStr)
+	return f.splitIntoPages(arrayBlockStr), nil
 }
 
 func (f LatexEncoder) encodeSwitches(ei EncodingInfo) string {
@@ -63,12 +63,12 @@ func (f LatexEncoder) encodeSwitches(ei EncodingInfo) string {
 
 		swStr := f.encodeSwitch(swIndex, ft)
 		sb.WriteString(swStr)
-		sb.WriteString(NEW_LN)
+		sb.WriteString(LATEX_NEW_LN)
 
 		if newFTExists {
 			updateSwStr := f.encodeSwitchNewFT(swIndex, newFT)
 			sb.WriteString(updateSwStr)
-			sb.WriteString(NEW_LN)
+			sb.WriteString(LATEX_NEW_LN)
 		}
 
 	}
@@ -82,23 +82,23 @@ func (f LatexEncoder) encodeControllers(ei EncodingInfo) string {
 	for i := range ei.usedContUpdates {
 		cStr := f.encodeController(ei, i)
 		sb.WriteString(cStr)
-		sb.WriteString(NEW_LN)
+		sb.WriteString(LATEX_NEW_LN)
 	}
 
 	return sb.String()
 }
 
 func (f LatexEncoder) splitIntoPages(arrayBlockStr string) string {
-	pages := util.SliceContent(arrayBlockStr, LINES_PER_PAGE, NEW_LN)
+	pages := util.SliceContent(arrayBlockStr, LATEX_LINES_PER_PAGE, LATEX_NEW_LN)
 
 	var sb strings.Builder
 	sep := ""
 	for _, page := range pages {
 		sb.WriteString(sep)
-		sb.WriteString(BEGIN_EQ_ARRAY)
+		sb.WriteString(LATEX_BEGIN_EQ_ARRAY)
 		sb.WriteString(page)
-		sb.WriteString(END_EQ_ARRAY)
-		sep = NEW_PAGE
+		sb.WriteString(LATEX_END_EQ_ARRAY)
+		sep = LATEX_NEW_PAGE
 	}
 
 	return sb.String()

@@ -9,18 +9,15 @@ import (
 )
 
 const (
-	LINK_TERM_NAME       = "L"
-	PACKET_IN_CHANNEL    = "pi"
-	PACKET_OUT_CHANNEL   = "po"
-	FLOW_MOD_SET_NAME    = "FM"
-	BIG_SWITCH_BASE_NAME = "SDN"
-	VAR_BASE_NAME        = "X"
-	VAR_I                = "i"
-	DOTS_SYM             = "\\, \\ldots \\, "
-	COMMA_SYM            = ",\\, "
-	FT_SET_NAME          = "FT"
-	OPEN_CURLY           = "\\{"
-	CLOSED_CURLY         = "\\}"
+	LATEX_FLOW_MOD_SET_NAME    = "FM"
+	LATEX_BIG_SWITCH_BASE_NAME = "SDN"
+	LATEX_VAR_BASE_NAME        = "X"
+	LATEX_VAR_I                = "i"
+	LATEX_DOTS_SYM             = "\\, \\ldots \\, "
+	LATEX_COMMA_SYM            = ",\\, "
+	LATEX_FT_SET_NAME          = "FT"
+	LATEX_OPEN_CURLY           = "\\{"
+	LATEX_CLOSED_CURLY         = "\\}"
 )
 
 type LatexBigSwitchEncoder struct {
@@ -30,7 +27,7 @@ type LatexBigSwitchEncoder struct {
 
 func NewLatexBigSwitchEncoder(proactiveSwitch bool) NetworkEncoder {
 	return NewLatexEncoder(proactiveSwitch, LatexBigSwitchEncoder{
-		sym:             LATEX_SYMBOLS,
+		sym:             DYNETKAT_LATEX_SYMBOLS,
 		proactiveSwitch: proactiveSwitch,
 	})
 }
@@ -67,7 +64,7 @@ func (f LatexBigSwitchEncoder) encodeSwitch(
 		fmtFlowRules = fmt.Sprintf("%s", f.sym.ZERO)
 	}
 
-	return fmt.Sprintf("%s & %s & %s %s", swName, f.sym.DEF, fmtFlowRules, NEW_LN)
+	return fmt.Sprintf("%s & %s & %s %s", swName, f.sym.DEF, fmtFlowRules, LATEX_NEW_LN)
 }
 
 func (f LatexBigSwitchEncoder) encodeSwitchNewFT(swIndex int, newFT *convert.FlowTable) string {
@@ -79,7 +76,7 @@ func (f LatexBigSwitchEncoder) encodeSwitchNewFT(swIndex int, newFT *convert.Flo
 	if updatedSwStrs == "" {
 		updatedSwStrs = fmt.Sprintf("%s", f.sym.ZERO)
 	}
-	return fmt.Sprintf("%s & %s & %s%s", newSwName, f.sym.DEF, updatedSwStrs, NEW_LN)
+	return fmt.Sprintf("%s & %s & %s%s", newSwName, f.sym.DEF, updatedSwStrs, LATEX_NEW_LN)
 }
 
 func (f LatexBigSwitchEncoder) encodeNetKATPolicies(
@@ -91,7 +88,7 @@ func (f LatexBigSwitchEncoder) encodeNetKATPolicies(
 		strs = append(strs, fmt.Sprintf("(%s)", policyStr))
 	}
 
-	orSep := fmt.Sprintf(" %s %s& & ", f.sym.OR, NEW_LN)
+	orSep := fmt.Sprintf(" %s %s& & ", f.sym.OR, LATEX_NEW_LN)
 	return strings.Join(strs, orSep)
 }
 
@@ -117,8 +114,8 @@ func (f LatexBigSwitchEncoder) encodeLinkTerm(ei EncodingInfo) string {
 		LINK_TERM_NAME,
 		f.sym.DEF,
 		fmtLinks,
-		NEW_LN,
-		NEW_LN,
+		LATEX_NEW_LN,
+		LATEX_NEW_LN,
 	)
 }
 
@@ -127,7 +124,7 @@ func (f LatexBigSwitchEncoder) encodeBigSwitchTerm(
 ) string {
 	n := ei.usedSwitchFTs.Len()
 
-	bigSwitchName := f.encodeBigSwitchName(VAR_BASE_NAME, n, -1, "")
+	bigSwitchName := f.encodeBigSwitchName(LATEX_VAR_BASE_NAME, n, -1, "")
 	packetProcPolicy := f.encodePacketProcPolicy(n, bigSwitchName)
 	fmtBigSw := []string{packetProcPolicy}
 	fmtBigSw = append(fmtBigSw, f.encodeSwitchPolicyComm(ei)...)
@@ -143,7 +140,7 @@ func (f LatexBigSwitchEncoder) encodeBigSwitchTerm(
 		bigSwitchName,
 		f.sym.DEF,
 		f.joinNonDetThridColumn(fmtBigSw),
-		NEW_LN,
+		LATEX_NEW_LN,
 	)
 }
 
@@ -153,18 +150,18 @@ func (f LatexBigSwitchEncoder) encodeBigSwitchName(
 	termName string,
 ) string {
 	if n < 0 {
-		return BIG_SWITCH_BASE_NAME
+		return LATEX_BIG_SWITCH_BASE_NAME
 	}
 
 	if index < 0 || index > n-1 {
 		return fmt.Sprintf(
 			"%s_{%s}",
-			BIG_SWITCH_BASE_NAME,
+			LATEX_BIG_SWITCH_BASE_NAME,
 			f.encodeDottedSequence(0, n, varName),
 		)
 	}
 
-	commaBefore, commaAfter := COMMA_SYM, COMMA_SYM
+	commaBefore, commaAfter := LATEX_COMMA_SYM, LATEX_COMMA_SYM
 	if index == 0 {
 		commaBefore = ""
 	}
@@ -178,7 +175,7 @@ func (f LatexBigSwitchEncoder) encodeBigSwitchName(
 
 	return fmt.Sprintf(
 		"%s_{%s}",
-		BIG_SWITCH_BASE_NAME,
+		LATEX_BIG_SWITCH_BASE_NAME,
 		fmtVarSeq,
 	)
 }
@@ -194,12 +191,12 @@ func (f LatexBigSwitchEncoder) encodeDottedSequence(
 
 	dotsStr := ""
 	if n > 2 {
-		dotsStr = DOTS_SYM + COMMA_SYM
+		dotsStr = LATEX_DOTS_SYM + LATEX_COMMA_SYM
 	}
 
 	fmtVars := fmt.Sprintf("%s%d", varName, startIndex)
 	if n > 1 {
-		fmtVars += fmt.Sprintf("%s %s %s%d", COMMA_SYM, dotsStr, varName, endIndex-1)
+		fmtVars += fmt.Sprintf("%s %s %s%d", LATEX_COMMA_SYM, dotsStr, varName, endIndex-1)
 	}
 
 	return fmtVars
@@ -212,12 +209,12 @@ func (f LatexBigSwitchEncoder) encodePacketProcPolicy(n int, bigSwitchName strin
 
 	dotsStr := ""
 	if n > 2 {
-		dotsStr = DOTS_SYM + f.sym.OR
+		dotsStr = LATEX_DOTS_SYM + f.sym.OR
 	}
 
-	concatVarsStr := VAR_BASE_NAME + "0"
+	concatVarsStr := LATEX_VAR_BASE_NAME + "0"
 	if n > 1 {
-		concatVarsStr += fmt.Sprintf("%s %s %s%d", f.sym.OR, dotsStr, VAR_BASE_NAME, n-1)
+		concatVarsStr += fmt.Sprintf("%s %s %s%d", f.sym.OR, dotsStr, LATEX_VAR_BASE_NAME, n-1)
 	}
 
 	return fmt.Sprintf(
@@ -252,7 +249,7 @@ func (f LatexBigSwitchEncoder) encodeSwitchPolicyComm(
 			f.sym.RECV,
 			newSwName,
 			f.sym.SEQ,
-			f.encodeBigSwitchName(VAR_BASE_NAME, ei.usedSwitchFTs.Len(), swIndex, newSwName),
+			f.encodeBigSwitchName(LATEX_VAR_BASE_NAME, ei.usedSwitchFTs.Len(), swIndex, newSwName),
 		)
 
 		commStrs = append(commStrs, commStr)
@@ -291,7 +288,7 @@ func (f LatexBigSwitchEncoder) encodeSDNTerm(
 	return fmt.Sprintf(
 		"SDN & %s & %s",
 		f.sym.DEF,
-		util.BreakColumn(sb.String(), THIRD_COL_MAX_LEN, NEW_LN+"& & "),
+		util.BreakColumn(sb.String(), LATEX_THIRD_COL_MAX_LEN, LATEX_NEW_LN+"& & "),
 	)
 }
 
@@ -324,7 +321,7 @@ func (f LatexBigSwitchEncoder) encodeController(
 	}
 
 	fmtC := f.joinNonDetThridColumn(fmtCommStrs)
-	return fmt.Sprintf("%s & %s & %s%s", cName, f.sym.DEF, fmtC, NEW_LN)
+	return fmt.Sprintf("%s & %s & %s%s", cName, f.sym.DEF, fmtC, LATEX_NEW_LN)
 }
 
 func (f LatexBigSwitchEncoder) getPassivePiPoComm(
@@ -342,7 +339,7 @@ func (f LatexBigSwitchEncoder) getPassivePiPoComm(
 		PACKET_IN_CHANNEL, commSym1, f.sym.ONE,
 		f.sym.SEQ, PACKET_OUT_CHANNEL, commSym2, f.sym.ONE,
 		f.sym.SEQ, termName,
-		NEW_LN,
+		LATEX_NEW_LN,
 	)
 }
 
@@ -371,7 +368,7 @@ func (f LatexBigSwitchEncoder) getActivePiPoComm(
 		newSwName := f.encodeSwitchName(swIndex, true)
 		if forSwitch {
 			termName = f.encodeBigSwitchName(
-				VAR_BASE_NAME,
+				LATEX_VAR_BASE_NAME,
 				ei.usedSwitchFTs.Len(),
 				swIndex,
 				newSwName,
@@ -401,6 +398,6 @@ func (f LatexBigSwitchEncoder) getActivePiPoComm(
 
 func (f LatexBigSwitchEncoder) joinNonDetThridColumn(strs []string) string {
 	// '& & ' are for placing the conent in the third column of the array env
-	nonDetSep := fmt.Sprintf(" %s %s& & ", f.sym.NONDET, NEW_LN)
+	nonDetSep := fmt.Sprintf(" %s %s& & ", f.sym.NONDET, LATEX_NEW_LN)
 	return strings.Join(strs, nonDetSep)
 }

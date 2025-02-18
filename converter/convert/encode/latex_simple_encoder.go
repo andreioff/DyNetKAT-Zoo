@@ -9,17 +9,13 @@ import (
 )
 
 const (
-	NEW_LN               = "\\\\\n"
-	DNEW_LN              = NEW_LN + NEW_LN
-	NEW_PAGE             = "\n\\newpage\n"
-	BEGIN_EQ_ARRAY       = "\\begin{equation} \\begin{array}{rcl}\n\n"
-	END_EQ_ARRAY         = "\n\n\\end{array} \\end{equation}\n"
-	THIRD_COL_MAX_LEN    = 40 // nr of chars before the third column of the array env overflows
-	LINES_PER_PAGE       = 40
-	SW_BASE_NAME         = "SW"
-	CONTROLLER_BASE_NAME = "C"
-	UP_CHANNEL_NAME      = "Up"
-	HELP_CHANNEL_NAME    = "Help"
+	LATEX_NEW_LN            = "\\\\\n"
+	LATEX_DNEW_LN           = LATEX_NEW_LN + LATEX_NEW_LN
+	LATEX_NEW_PAGE          = "\n\\newpage\n"
+	LATEX_BEGIN_EQ_ARRAY    = "\\begin{equation} \\begin{array}{rcl}\n\n"
+	LATEX_END_EQ_ARRAY      = "\n\n\\end{array} \\end{equation}\n"
+	LATEX_THIRD_COL_MAX_LEN = 40 // nr of chars before the third column of the array env overflows
+	LATEX_LINES_PER_PAGE    = 40
 )
 
 type LatexSimpleEncoder struct {
@@ -28,7 +24,7 @@ type LatexSimpleEncoder struct {
 }
 
 func NewLatexSimpleEncoder(proactiveSwitch bool) NetworkEncoder {
-	return NewLatexEncoder(proactiveSwitch, LatexSimpleEncoder{sym: LATEX_SYMBOLS})
+	return NewLatexEncoder(proactiveSwitch, LatexSimpleEncoder{sym: DYNETKAT_LATEX_SYMBOLS})
 }
 
 func (f LatexSimpleEncoder) SymbolEncoding() SymbolEncoding {
@@ -54,11 +50,11 @@ func (f LatexSimpleEncoder) encodeSwitchNewFT(swIndex int, newFT *convert.FlowTa
 			f.sym.ZERO,
 			f.sym.SEQ,
 			newSwName,
-			NEW_LN,
+			LATEX_NEW_LN,
 		)
 	}
 	fmtNewSw := f.joinNonDetThridColumn(updatedSwStrs)
-	return fmt.Sprintf("%s & %s & %s%s", newSwName, f.sym.DEF, fmtNewSw, NEW_LN)
+	return fmt.Sprintf("%s & %s & %s%s", newSwName, f.sym.DEF, fmtNewSw, LATEX_NEW_LN)
 }
 
 func (f LatexSimpleEncoder) encodeSwitch(
@@ -78,7 +74,7 @@ func (f LatexSimpleEncoder) encodeSwitch(
 	fmtFlowRules = append(fmtFlowRules, commStr)
 
 	fmtSw := f.joinNonDetThridColumn(fmtFlowRules)
-	return fmt.Sprintf("%s & %s & %s %s", swName, f.sym.DEF, fmtSw, NEW_LN)
+	return fmt.Sprintf("%s & %s & %s %s", swName, f.sym.DEF, fmtSw, LATEX_NEW_LN)
 }
 
 func (f LatexSimpleEncoder) encodeNetKATPolicies(
@@ -146,7 +142,7 @@ func (f LatexSimpleEncoder) encodeSDNTerm(ei EncodingInfo) string {
 	for i := range ei.usedContUpdates {
 		sb.WriteString(prefix + fmt.Sprintf("%s%d", CONTROLLER_BASE_NAME, i))
 	}
-	content := util.BreakColumn(sb.String(), THIRD_COL_MAX_LEN, NEW_LN+"& & ")
+	content := util.BreakColumn(sb.String(), LATEX_THIRD_COL_MAX_LEN, LATEX_NEW_LN+"& & ")
 	return fmt.Sprintf("SDN & %s & %s", f.sym.DEF, content)
 }
 
@@ -170,11 +166,11 @@ func (f LatexSimpleEncoder) encodeController(ei EncodingInfo, cIndex int) string
 	}
 
 	fmtC := f.joinNonDetThridColumn(fmtCommStrs)
-	return fmt.Sprintf("%s & %s & %s %s", cName, f.sym.DEF, fmtC, NEW_LN)
+	return fmt.Sprintf("%s & %s & %s %s", cName, f.sym.DEF, fmtC, LATEX_NEW_LN)
 }
 
 func (f LatexSimpleEncoder) joinNonDetThridColumn(strs []string) string {
 	// '& & ' are for placing the conent in the third column of the array env
-	nonDetSep := fmt.Sprintf(" %s %s& & ", f.sym.NONDET, NEW_LN)
+	nonDetSep := fmt.Sprintf(" %s %s& & ", f.sym.NONDET, LATEX_NEW_LN)
 	return strings.Join(strs, nonDetSep)
 }

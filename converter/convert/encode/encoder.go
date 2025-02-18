@@ -1,5 +1,16 @@
 package encode
 
+const (
+	LINK_TERM_NAME       = "L"
+	FLOW_MOD_CHANNEL     = "FM"
+	PACKET_IN_CHANNEL    = "PI"
+	PACKET_OUT_CHANNEL   = "PO"
+	SW_BASE_NAME         = "SW"
+	CONTROLLER_BASE_NAME = "C"
+	UP_CHANNEL_NAME      = "Up"
+	HELP_CHANNEL_NAME    = "Help"
+)
+
 type SymbolEncoding struct {
 	// NetKAT symbols
 	ONE    string // identity symbol
@@ -23,6 +34,6 @@ type SymbolEncoding struct {
 
 type NetworkEncoder interface {
 	SymbolEncoding() SymbolEncoding
-	Encode(EncodingInfo) string
+	Encode(EncodingInfo) (string, error)
 	ProactiveSwitch() bool
 }

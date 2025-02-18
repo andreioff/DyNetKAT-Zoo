@@ -53,43 +53,44 @@ func (f LatexBigSwitchEncoder) encodeSwitch(
 	swIndex int,
 	ft *convert.FlowTable,
 ) string {
+	if ft == nil {
+		return f.sym.ZERO
+	}
+
 	swName := f.encodeSwitchName(swIndex, false)
 
-	onlyNonLinkFt := ft.Filter(func(fr convert.FlowRule) bool {
-		return !fr.IsLink()
-	})
-	fmtFlowRules := f.encodeNetKATPolicies(onlyNonLinkFt.ToNetKATPolicies())
-
+	fmtFlowRules := f.encodeFlowTable(*ft)
 	if fmtFlowRules == "" {
-		fmtFlowRules = fmt.Sprintf("%s", f.sym.ZERO)
+		fmtFlowRules = f.sym.ZERO
 	}
 
 	return fmt.Sprintf("%s & %s & %s %s", swName, f.sym.DEF, fmtFlowRules, LATEX_NEW_LN)
 }
 
 func (f LatexBigSwitchEncoder) encodeSwitchNewFT(swIndex int, newFT *convert.FlowTable) string {
+	if newFT == nil {
+		return f.sym.ZERO
+	}
+
 	newSwName := f.encodeSwitchName(swIndex, true)
-	noLinksFt := newFT.Filter(func(fr convert.FlowRule) bool {
-		return !fr.IsLink()
-	})
-	updatedSwStrs := f.encodeNetKATPolicies(noLinksFt.ToNetKATPolicies())
+	updatedSwStrs := f.encodeFlowTable(*newFT)
+
 	if updatedSwStrs == "" {
-		updatedSwStrs = fmt.Sprintf("%s", f.sym.ZERO)
+		updatedSwStrs = f.sym.ZERO
 	}
 	return fmt.Sprintf("%s & %s & %s%s", newSwName, f.sym.DEF, updatedSwStrs, LATEX_NEW_LN)
 }
 
-func (f LatexBigSwitchEncoder) encodeNetKATPolicies(
-	policies []*convert.SimpleNetKATPolicy,
+func (f LatexBigSwitchEncoder) encodeFlowTable(
+	ft convert.FlowTable,
 ) string {
-	strs := []string{}
-	for _, policy := range policies {
-		policyStr := policy.ToString(f.sym.AND, f.sym.EQ, f.sym.ASSIGN)
-		strs = append(strs, fmt.Sprintf("(%s)", policyStr))
-	}
-
 	orSep := fmt.Sprintf(" %s %s& & ", f.sym.OR, LATEX_NEW_LN)
-	return strings.Join(strs, orSep)
+
+	fmtFlowRules := ft.Filter(func(fr convert.FlowRule) bool {
+		return !fr.IsLink()
+	}).ToNetKATStr(f.sym.AND, f.sym.EQ, f.sym.ASSIGN, orSep)
+
+	return fmtFlowRules
 }
 
 func (f LatexBigSwitchEncoder) encodeLinkTerm(ei EncodingInfo) string {
@@ -108,7 +109,7 @@ func (f LatexBigSwitchEncoder) encodeLinkTerm(ei EncodingInfo) string {
 		}
 	}
 
-	fmtLinks := f.encodeNetKATPolicies(linksFt.ToNetKATPolicies())
+	fmtLinks := f.encodeFlowTable(*linksFt)
 	return fmt.Sprintf(
 		"%s & %s & %s %s%s",
 		LINK_TERM_NAME,
@@ -240,7 +241,7 @@ func (f LatexBigSwitchEncoder) encodeSwitchPolicyComm(
 			continue
 		}
 
-		swIndex, _ := ei.nodeIdToIndex.Get(swId)
+		swIndex := ei.GetSwIndex(swId)
 		newSwName := f.encodeSwitchName(swIndex, true)
 		commStr := fmt.Sprintf(
 			"%s%d %s %s %s %s",
@@ -309,7 +310,7 @@ func (f LatexBigSwitchEncoder) encodeController(
 
 	update := ei.usedContUpdates[cIndex]
 	for pair := update.flowTables.Oldest(); pair != nil; pair = pair.Next() {
-		swIndex, _ := ei.nodeIdToIndex.Get(pair.Key)
+		swIndex := ei.GetSwIndex(pair.Key)
 		commStr := f.encodeControllerPolicyComm(cName, swIndex)
 		fmtCommStrs = append(fmtCommStrs, commStr)
 	}
@@ -364,7 +365,7 @@ func (f LatexBigSwitchEncoder) getActivePiPoComm(
 			continue
 		}
 
-		swIndex, _ := ei.nodeIdToIndex.Get(swId)
+		swIndex := ei.GetSwIndex(swId)
 		newSwName := f.encodeSwitchName(swIndex, true)
 		if forSwitch {
 			termName = f.encodeBigSwitchName(
@@ -397,7 +398,7 @@ func (f LatexBigSwitchEncoder) getActivePiPoComm(
 }
 
 func (f LatexBigSwitchEncoder) joinNonDetThridColumn(strs []string) string {
-	// '& & ' are for placing the conent in the third column of the array env
+	// '& & ' are for placing the content in the third column of the array env
 	nonDetSep := fmt.Sprintf(" %s %s& & ", f.sym.NONDET, LATEX_NEW_LN)
 	return strings.Join(strs, nonDetSep)
 }

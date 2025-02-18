@@ -265,7 +265,7 @@ func TestSimpleNetKATPolicy_ToString(t *testing.T) {
 				completeAssignment: []util.StrTup{},
 			},
 			args: args{
-				AndSym:    "+",
+				AndSym:    ".",
 				EqSym:     "=",
 				AssignSym: "<-",
 			},
@@ -278,7 +278,7 @@ func TestSimpleNetKATPolicy_ToString(t *testing.T) {
 				completeAssignment: []util.StrTup{},
 			},
 			args: args{
-				AndSym:    "+",
+				AndSym:    ".",
 				EqSym:     "=",
 				AssignSym: "<-",
 			},
@@ -291,7 +291,7 @@ func TestSimpleNetKATPolicy_ToString(t *testing.T) {
 				completeAssignment: []util.StrTup{{Fst: "fieldAssign1", Snd: "valueAssign1"}},
 			},
 			args: args{
-				AndSym:    "+",
+				AndSym:    ".",
 				EqSym:     "=",
 				AssignSym: "<-",
 			},
@@ -310,11 +310,11 @@ func TestSimpleNetKATPolicy_ToString(t *testing.T) {
 				},
 			},
 			args: args{
-				AndSym:    "+",
+				AndSym:    ".",
 				EqSym:     "=",
 				AssignSym: "<-",
 			},
-			want: "(fieldTest1=valueTest1)+(fieldTest2=valueTest2)+(fieldAssign1<-valueAssign1)+(fieldAssign2<-valueAssign2)",
+			want: "(fieldTest1=valueTest1).(fieldTest2=valueTest2).(fieldAssign1<-valueAssign1).(fieldAssign2<-valueAssign2)",
 		},
 	}
 	for _, tt := range tests {

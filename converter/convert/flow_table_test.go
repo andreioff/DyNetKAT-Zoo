@@ -534,7 +534,7 @@ func TestFlowTable_ToNetKATPolicies(t *testing.T) {
 			ft := &FlowTable{
 				entries: tt.fields.entries,
 			}
-			assert.ElementsMatch(t, tt.want, ft.ToNetKATPolicies())
+			assert.ElementsMatch(t, tt.want, ft.toNetKATPolicies())
 		})
 	}
 }

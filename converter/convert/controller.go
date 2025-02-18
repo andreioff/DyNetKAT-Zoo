@@ -131,6 +131,27 @@ func (c *Controller) AddNewFlowRuleSequence(seq *FlowRuleSequence) error {
 		return util.NewError(util.ErrNilArgument, "seq")
 	}
 
-	c.newFrSequences = append(c.newFrSequences, seq)
+	if len(seq.entries) > 0 {
+		c.newFrSequences = append(c.newFrSequences, seq)
+	}
 	return nil
+}
+
+func (c *Controller) IsUpdatingSwitch(nodeId int64) bool {
+	_, willReceiveUpdate := c.NewFlowTables().Get(nodeId)
+
+	willReceivePolicy := false
+	for _, seq := range c.newFrSequences {
+		for _, e := range seq.entries {
+			if e.SwitchId == nodeId {
+				willReceivePolicy = true
+				break
+			}
+		}
+		if willReceivePolicy {
+			break
+		}
+	}
+
+	return willReceivePolicy || willReceiveUpdate
 }

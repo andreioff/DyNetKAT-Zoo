@@ -33,7 +33,7 @@ func (snp *SimpleNetKATPolicy) AddAssignment(fieldName, fieldValue string) {
 	snp.completeAssignment = append(snp.completeAssignment, util.NewStrTup(fieldName, fieldValue))
 }
 
-func (snp *SimpleNetKATPolicy) ToString(AndSym, EqSym, AssignSym string) string {
+func (snp *SimpleNetKATPolicy) TestToString(AndSym, EqSym string) string {
 	var sb strings.Builder
 
 	prefix := ""
@@ -42,8 +42,21 @@ func (snp *SimpleNetKATPolicy) ToString(AndSym, EqSym, AssignSym string) string 
 		prefix = AndSym
 	}
 
+	return sb.String()
+}
+
+func (snp *SimpleNetKATPolicy) ToString(AndSym, EqSym, AssignSym string) string {
+	var sb strings.Builder
+	testStr := snp.TestToString(AndSym, EqSym)
+	sb.WriteString(testStr)
+
+	prefix := AndSym
+	if testStr == "" {
+		prefix = ""
+	}
 	for _, assig := range snp.completeAssignment {
 		sb.WriteString(fmt.Sprintf("%s(%s%s%s)", prefix, assig.Fst, AssignSym, assig.Snd))
+		prefix = AndSym
 	}
 
 	return sb.String()

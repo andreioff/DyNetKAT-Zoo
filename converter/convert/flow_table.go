@@ -2,6 +2,7 @@ package convert
 
 import (
 	"strconv"
+	"strings"
 
 	om "github.com/wk8/go-ordered-map/v2"
 	"utwente.nl/topology-to-dynetkat-coverter/util"
@@ -110,7 +111,7 @@ func (ft *FlowTable) Extend(otherFt *FlowTable) {
 	}
 }
 
-func (ft *FlowTable) ToNetKATPolicies() []*SimpleNetKATPolicy {
+func (ft *FlowTable) toNetKATPolicies() []*SimpleNetKATPolicy {
 	policies := []*SimpleNetKATPolicy{}
 
 	for pair := ft.entries.Oldest(); pair != nil; pair = pair.Next() {
@@ -125,6 +126,22 @@ func (ft *FlowTable) ToNetKATPolicies() []*SimpleNetKATPolicy {
 	}
 
 	return policies
+}
+
+func (ft *FlowTable) ToNetKATStr(AndSym, EqSym, AssignSym, OrSym string) string {
+	policies := ft.toNetKATPolicies()
+	var sb strings.Builder
+
+	prefix := ""
+	for _, policy := range policies {
+		policyStr := policy.ToString(AndSym, EqSym, AssignSym)
+
+		sb.WriteString(prefix)
+		sb.WriteString(policyStr)
+		prefix = OrSym
+	}
+
+	return sb.String()
 }
 
 // returns a deep copy of this flow table

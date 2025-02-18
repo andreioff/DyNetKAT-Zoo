@@ -59,7 +59,7 @@ func (f LatexEncoder) encodeSwitches(ei EncodingInfo) string {
 	for pair := ei.usedSwitchFTs.Oldest(); pair != nil; pair = pair.Next() {
 		swId, ft := pair.Key, pair.Value
 		newFT, newFTExists := ei.FindNewFT(swId)
-		swIndex, _ := ei.nodeIdToIndex.Get(swId)
+		swIndex := ei.GetSwIndex(swId)
 
 		swStr := f.encodeSwitch(swIndex, ft)
 		sb.WriteString(swStr)

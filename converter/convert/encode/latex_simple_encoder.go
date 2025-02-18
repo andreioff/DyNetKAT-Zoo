@@ -41,8 +41,9 @@ func (f LatexSimpleEncoder) encodeInformation(ei EncodingInfo) string {
 
 func (f LatexSimpleEncoder) encodeSwitchNewFT(swIndex int, newFT *convert.FlowTable) string {
 	newSwName := f.encodeSwitchName(swIndex, true)
-	updatedSwStrs := f.encodeNetKATPolicies(newFT.ToNetKATPolicies(), newSwName)
-	if len(updatedSwStrs) == 0 {
+	fmtNewSw := f.encodeSwFlowTable(newFT, newSwName)
+
+	if fmtNewSw == "" {
 		return fmt.Sprintf(
 			"%s & %s & %s%s%s%s",
 			newSwName,
@@ -53,7 +54,6 @@ func (f LatexSimpleEncoder) encodeSwitchNewFT(swIndex int, newFT *convert.FlowTa
 			LATEX_NEW_LN,
 		)
 	}
-	fmtNewSw := f.joinNonDetThridColumn(updatedSwStrs)
 	return fmt.Sprintf("%s & %s & %s%s", newSwName, f.sym.DEF, fmtNewSw, LATEX_NEW_LN)
 }
 
@@ -63,34 +63,26 @@ func (f LatexSimpleEncoder) encodeSwitch(
 ) string {
 	swName := f.encodeSwitchName(swIndex, false)
 
-	fmtFlowRules := f.encodeNetKATPolicies(ft.ToNetKATPolicies(), swName)
-
-	if len(fmtFlowRules) == 0 {
-		dropAllStr := fmt.Sprintf("%s%s%s", f.sym.ZERO, f.sym.SEQ, swName)
-		fmtFlowRules = append(fmtFlowRules, dropAllStr)
+	fmtFlowRules := f.encodeSwFlowTable(ft, swName)
+	if fmtFlowRules == "" {
+		fmtFlowRules = fmt.Sprintf("%s%s%s", f.sym.ZERO, f.sym.SEQ, swName)
 	}
-
 	commStr := f.encodeCommunication(f.encodeSwitchName(swIndex, true), swIndex, false)
-	fmtFlowRules = append(fmtFlowRules, commStr)
 
-	fmtSw := f.joinNonDetThridColumn(fmtFlowRules)
+	fmtSw := f.joinNonDetThridColumn([]string{fmtFlowRules, commStr})
 	return fmt.Sprintf("%s & %s & %s %s", swName, f.sym.DEF, fmtSw, LATEX_NEW_LN)
 }
 
-func (f LatexSimpleEncoder) encodeNetKATPolicies(
-	policies []*convert.SimpleNetKATPolicy,
+func (f LatexSimpleEncoder) encodeSwFlowTable(
+	flowTable *convert.FlowTable,
 	swName string,
-) []string {
-	fmtFlowRules := []string{}
-	for _, policy := range policies {
-		fmtFlowRules = append(fmtFlowRules, fmt.Sprintf(
-			"(%s) %s %s",
-			policy.ToString(f.sym.AND, f.sym.EQ, f.sym.ASSIGN),
-			f.sym.SEQ, swName,
-		))
+) string {
+	if flowTable == nil || flowTable.Entries().Len() == 0 {
+		return ""
 	}
 
-	return fmtFlowRules
+	fmtFlowRules := flowTable.ToNetKATStr(f.sym.AND, f.sym.EQ, f.sym.ASSIGN, f.sym.OR)
+	return fmt.Sprintf("(%s) %s %s", fmtFlowRules, f.sym.SEQ, swName)
 }
 
 func (f LatexSimpleEncoder) encodeCommunication(
@@ -134,7 +126,7 @@ func (f LatexSimpleEncoder) encodeSDNTerm(ei EncodingInfo) string {
 
 	prefix := ""
 	for pair := ei.usedSwitchFTs.Oldest(); pair != nil; pair = pair.Next() {
-		swIndex, _ := ei.nodeIdToIndex.Get(pair.Key)
+		swIndex := ei.GetSwIndex(pair.Key)
 		sb.WriteString(prefix + f.encodeSwitchName(swIndex, false))
 		prefix = f.sym.PAR
 	}
@@ -160,7 +152,7 @@ func (f LatexSimpleEncoder) encodeController(ei EncodingInfo, cIndex int) string
 
 	update := ei.usedContUpdates[cIndex]
 	for pair := update.flowTables.Oldest(); pair != nil; pair = pair.Next() {
-		swIndex, _ := ei.nodeIdToIndex.Get(pair.Key)
+		swIndex := ei.GetSwIndex(pair.Key)
 		commStr := f.encodeCommunication(cName, swIndex, false)
 		fmtCommStrs = append(fmtCommStrs, commStr)
 	}

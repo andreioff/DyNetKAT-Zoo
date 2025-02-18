@@ -1,6 +1,8 @@
 package encode
 
 import (
+	"fmt"
+
 	om "github.com/wk8/go-ordered-map/v2"
 	"utwente.nl/topology-to-dynetkat-coverter/convert"
 	"utwente.nl/topology-to-dynetkat-coverter/util"
@@ -26,26 +28,10 @@ func NewEncodingInfo(n *convert.Network) (EncodingInfo, error) {
 	}
 
 	return EncodingInfo{
-		nodeIdToIndex:   getNodeIdToIndex(n.Switches(), usedSwitchFTs),
+		nodeIdToIndex:   *om.New[int64, int](),
 		usedSwitchFTs:   usedSwitchFTs,
 		usedContUpdates: usedContUpdates,
 	}, nil
-}
-
-func getNodeIdToIndex(
-	switches []*convert.Switch,
-	usedSwitchFTs om.OrderedMap[int64, *convert.FlowTable],
-) om.OrderedMap[int64, int] {
-	nodeIdToIndex := *om.New[int64, int]()
-	index := 0
-	for _, sw := range switches {
-		_, exists := usedSwitchFTs.Get(sw.TopoNode().ID())
-		if exists {
-			nodeIdToIndex.Set(sw.TopoNode().ID(), index)
-			index++
-		}
-	}
-	return nodeIdToIndex
 }
 
 func getUsedSwitchesFTs(switches []*convert.Switch) om.OrderedMap[int64, *convert.FlowTable] {
@@ -53,12 +39,7 @@ func getUsedSwitchesFTs(switches []*convert.Switch) om.OrderedMap[int64, *conver
 
 	for _, sw := range switches {
 		c := sw.Controller()
-		willReceiveUpdate := false
-		if c != nil {
-			_, willReceiveUpdate = c.NewFlowTables().Get(sw.TopoNode().ID())
-		}
-
-		if sw.FlowTable().Entries().Len() > 0 || willReceiveUpdate {
+		if sw.FlowTable().Entries().Len() > 0 || c.IsUpdatingSwitch(sw.TopoNode().ID()) {
 			usedSwitchFTs.Set(sw.TopoNode().ID(), sw.FlowTable())
 		}
 	}
@@ -92,4 +73,19 @@ func (ei EncodingInfo) FindNewFT(nodeId int64) (*convert.FlowTable, bool) {
 	}
 
 	return nil, false
+}
+
+func (ei EncodingInfo) GetSwIndex(nodeId int64) int {
+	indx, exists := ei.nodeIdToIndex.Get(nodeId)
+	if !exists {
+		ei.nodeIdToIndex.Set(nodeId, ei.nodeIdToIndex.Len())
+		indx, _ = ei.nodeIdToIndex.Get(nodeId)
+	}
+
+	return indx
+}
+
+func (ei EncodingInfo) GetSwIndexStr(nodeId int64) string {
+	indx := ei.GetSwIndex(nodeId)
+	return fmt.Sprintf("%d", indx)
 }

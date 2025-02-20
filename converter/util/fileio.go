@@ -71,13 +71,7 @@ func WriteToNewFile(dir, fileName, data string) error {
 	}
 	filePath := getFilePath(dir, fileName)
 
-	withTmpl, err := applyDefaultDocTemplate(data)
-	if err != nil {
-		return err
-	}
-
-	os.WriteFile(filePath, []byte(withTmpl), FILE_PERM)
-	return nil
+	return os.WriteFile(filePath, []byte(data), FILE_PERM)
 }
 
 func WriteToNewPdf(dir, name, content string) error {

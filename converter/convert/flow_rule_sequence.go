@@ -1,5 +1,7 @@
 package convert
 
+import "strconv"
+
 type FRSequenceEntry struct {
 	SwitchId   int64
 	DestHostId int64
@@ -18,6 +20,15 @@ func (e1 FRSequenceEntry) isEqual(e2 FRSequenceEntry) bool {
 	return e1.SwitchId == e2.SwitchId &&
 		e1.DestHostId == e2.DestHostId &&
 		e1.FlowRule.IsEqual(e2.FlowRule)
+}
+
+func (e FRSequenceEntry) ToNetKATPolicy() SimpleNetKATPolicy {
+	policy := NewSimpleNetKATPolicy().
+		AddTest(DST_STRING, strconv.FormatInt(e.DestHostId, 10)).
+		AddTest(PORT_STRING, strconv.FormatInt(e.FlowRule.inPort, 10)).
+		AddAssignment(PORT_STRING, strconv.FormatInt(e.FlowRule.outPort, 10))
+
+	return policy
 }
 
 type FlowRuleSequence struct {

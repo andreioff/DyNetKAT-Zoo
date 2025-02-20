@@ -85,38 +85,25 @@ func (f LatexBigSwitchEncoder) encodeFlowTable(
 	ft convert.FlowTable,
 ) string {
 	orSep := fmt.Sprintf(" %s %s& & ", f.sym.OR, LATEX_NEW_LN)
-
-	fmtFlowRules := ft.Filter(func(fr convert.FlowRule) bool {
-		return !fr.IsLink()
-	}).ToNetKATStr(f.sym.AND, f.sym.EQ, f.sym.ASSIGN, orSep)
-
-	return fmtFlowRules
+	return ft.ToNetKATStr(f.sym.AND, f.sym.EQ, f.sym.ASSIGN, orSep)
 }
 
 func (f LatexBigSwitchEncoder) encodeLinkTerm(ei EncodingInfo) string {
-	linksFt := convert.NewFlowTable()
-	isLinkPred := func(fr convert.FlowRule) bool {
-		return fr.IsLink()
+	var sb strings.Builder
+
+	prefix := ""
+	for _, link := range ei.links {
+		sb.WriteString(prefix)
+		sb.WriteString(link.ToString(f.sym.AND, f.sym.EQ, f.sym.ASSIGN))
+		prefix = fmt.Sprintf(" %s %s& & ", f.sym.OR, LATEX_NEW_LN)
 	}
 
-	for pair := ei.usedSwitchFTs.Oldest(); pair != nil; pair = pair.Next() {
-		linksFt.Extend(pair.Value.Filter(isLinkPred))
-	}
-
-	for _, update := range ei.usedContUpdates {
-		for pair := update.flowTables.Oldest(); pair != nil; pair = pair.Next() {
-			linksFt.Extend(pair.Value.Filter(isLinkPred))
-		}
-	}
-
-	fmtLinks := f.encodeFlowTable(*linksFt)
 	return fmt.Sprintf(
-		"%s & %s & %s %s%s",
+		"%s & %s & %s %s",
 		LINK_TERM_NAME,
 		f.sym.DEF,
-		fmtLinks,
-		LATEX_NEW_LN,
-		LATEX_NEW_LN,
+		sb.String(),
+		LATEX_DNEW_LN,
 	)
 }
 

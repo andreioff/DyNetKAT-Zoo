@@ -7,8 +7,8 @@ const (
 	PACKET_OUT_CHANNEL   = "PO"
 	SW_BASE_NAME         = "SW"
 	CONTROLLER_BASE_NAME = "C"
-	UP_CHANNEL_NAME      = "Up"
-	HELP_CHANNEL_NAME    = "Help"
+	UP_CHANNEL_NAME      = "UP"
+	HELP_CHANNEL_NAME    = "HELP"
 )
 
 type SymbolEncoding struct {

@@ -18,22 +18,24 @@ type SimpleNetKATPolicy struct {
 	completeAssignment []util.StrTup
 }
 
-func NewSimpleNetKATPolicy() *SimpleNetKATPolicy {
-	return &SimpleNetKATPolicy{
+func NewSimpleNetKATPolicy() SimpleNetKATPolicy {
+	return SimpleNetKATPolicy{
 		completeTest:       []util.StrTup{},
 		completeAssignment: []util.StrTup{},
 	}
 }
 
-func (snp *SimpleNetKATPolicy) AddTest(fieldName, fieldValue string) {
+func (snp SimpleNetKATPolicy) AddTest(fieldName, fieldValue string) SimpleNetKATPolicy {
 	snp.completeTest = append(snp.completeTest, util.NewStrTup(fieldName, fieldValue))
+	return snp
 }
 
-func (snp *SimpleNetKATPolicy) AddAssignment(fieldName, fieldValue string) {
+func (snp SimpleNetKATPolicy) AddAssignment(fieldName, fieldValue string) SimpleNetKATPolicy {
 	snp.completeAssignment = append(snp.completeAssignment, util.NewStrTup(fieldName, fieldValue))
+	return snp
 }
 
-func (snp *SimpleNetKATPolicy) TestToString(AndSym, EqSym string) string {
+func (snp SimpleNetKATPolicy) TestToString(AndSym, EqSym string) string {
 	var sb strings.Builder
 
 	prefix := ""
@@ -45,7 +47,7 @@ func (snp *SimpleNetKATPolicy) TestToString(AndSym, EqSym string) string {
 	return sb.String()
 }
 
-func (snp *SimpleNetKATPolicy) ToString(AndSym, EqSym, AssignSym string) string {
+func (snp SimpleNetKATPolicy) ToString(AndSym, EqSym, AssignSym string) string {
 	var sb strings.Builder
 	testStr := snp.TestToString(AndSym, EqSym)
 	sb.WriteString(testStr)

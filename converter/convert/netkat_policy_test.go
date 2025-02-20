@@ -10,11 +10,11 @@ import (
 func TestNewSimpleNetKATPolicy(t *testing.T) {
 	tests := []struct {
 		name string
-		want *SimpleNetKATPolicy
+		want SimpleNetKATPolicy
 	}{
 		{
 			name: "Valid policy [Success]",
-			want: &SimpleNetKATPolicy{
+			want: SimpleNetKATPolicy{
 				completeTest:       []util.StrTup{},
 				completeAssignment: []util.StrTup{},
 			},
@@ -41,7 +41,7 @@ func TestSimpleNetKATPolicy_AddTest(t *testing.T) {
 		name        string
 		fields      fields
 		args        args
-		assertSetup func(*testing.T, *SimpleNetKATPolicy)
+		assertSetup func(*testing.T, SimpleNetKATPolicy)
 	}{
 		{
 			name: "Empty fields [Success]",
@@ -53,7 +53,7 @@ func TestSimpleNetKATPolicy_AddTest(t *testing.T) {
 				fieldName:  "",
 				fieldValue: "",
 			},
-			assertSetup: func(t *testing.T, snp *SimpleNetKATPolicy) {
+			assertSetup: func(t *testing.T, snp SimpleNetKATPolicy) {
 				assert.Len(t, snp.completeTest, 1)
 				assert.Len(t, snp.completeAssignment, 0)
 				assert.ElementsMatch(t, snp.completeTest, []util.StrTup{{Fst: "", Snd: ""}})
@@ -69,7 +69,7 @@ func TestSimpleNetKATPolicy_AddTest(t *testing.T) {
 				fieldName:  "fieldTest",
 				fieldValue: "valueTest",
 			},
-			assertSetup: func(t *testing.T, snp *SimpleNetKATPolicy) {
+			assertSetup: func(t *testing.T, snp SimpleNetKATPolicy) {
 				assert.Len(t, snp.completeTest, 2)
 				assert.Len(t, snp.completeAssignment, 1)
 				assert.ElementsMatch(
@@ -99,7 +99,7 @@ func TestSimpleNetKATPolicy_AddTest(t *testing.T) {
 				fieldName:  "fieldTest2",
 				fieldValue: "valueTest2",
 			},
-			assertSetup: func(t *testing.T, snp *SimpleNetKATPolicy) {
+			assertSetup: func(t *testing.T, snp SimpleNetKATPolicy) {
 				assert.Len(t, snp.completeTest, 2)
 				assert.Len(t, snp.completeAssignment, 1)
 				assert.ElementsMatch(
@@ -122,11 +122,10 @@ func TestSimpleNetKATPolicy_AddTest(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			snp := &SimpleNetKATPolicy{
+			snp := SimpleNetKATPolicy{
 				completeTest:       tt.fields.completeTest,
 				completeAssignment: tt.fields.completeAssignment,
-			}
-			snp.AddTest(tt.args.fieldName, tt.args.fieldValue)
+			}.AddTest(tt.args.fieldName, tt.args.fieldValue)
 			// Assert the result
 			if tt.assertSetup != nil {
 				tt.assertSetup(t, snp)
@@ -148,7 +147,7 @@ func TestSimpleNetKATPolicy_AddAssignment(t *testing.T) {
 		name        string
 		fields      fields
 		args        args
-		assertSetup func(*testing.T, *SimpleNetKATPolicy)
+		assertSetup func(*testing.T, SimpleNetKATPolicy)
 	}{
 		{
 			name: "Empty fields [Success]",
@@ -160,7 +159,7 @@ func TestSimpleNetKATPolicy_AddAssignment(t *testing.T) {
 				fieldName:  "",
 				fieldValue: "",
 			},
-			assertSetup: func(t *testing.T, snp *SimpleNetKATPolicy) {
+			assertSetup: func(t *testing.T, snp SimpleNetKATPolicy) {
 				assert.Len(t, snp.completeTest, 0)
 				assert.Len(t, snp.completeAssignment, 1)
 				assert.ElementsMatch(t, snp.completeAssignment, []util.StrTup{{Fst: "", Snd: ""}})
@@ -176,7 +175,7 @@ func TestSimpleNetKATPolicy_AddAssignment(t *testing.T) {
 				fieldName:  "fieldAssign",
 				fieldValue: "valueAssign",
 			},
-			assertSetup: func(t *testing.T, snp *SimpleNetKATPolicy) {
+			assertSetup: func(t *testing.T, snp SimpleNetKATPolicy) {
 				assert.Len(t, snp.completeTest, 1)
 				assert.Len(t, snp.completeAssignment, 2)
 				assert.ElementsMatch(
@@ -206,7 +205,7 @@ func TestSimpleNetKATPolicy_AddAssignment(t *testing.T) {
 				fieldName:  "fieldAssign2",
 				fieldValue: "valueAssign2",
 			},
-			assertSetup: func(t *testing.T, snp *SimpleNetKATPolicy) {
+			assertSetup: func(t *testing.T, snp SimpleNetKATPolicy) {
 				assert.Len(t, snp.completeTest, 1)
 				assert.Len(t, snp.completeAssignment, 2)
 				assert.ElementsMatch(
@@ -229,11 +228,10 @@ func TestSimpleNetKATPolicy_AddAssignment(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			snp := &SimpleNetKATPolicy{
+			snp := SimpleNetKATPolicy{
 				completeTest:       tt.fields.completeTest,
 				completeAssignment: tt.fields.completeAssignment,
-			}
-			snp.AddAssignment(tt.args.fieldName, tt.args.fieldValue)
+			}.AddAssignment(tt.args.fieldName, tt.args.fieldValue)
 			// Assert the result
 			if tt.assertSetup != nil {
 				tt.assertSetup(t, snp)
@@ -319,7 +317,7 @@ func TestSimpleNetKATPolicy_ToString(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			snp := &SimpleNetKATPolicy{
+			snp := SimpleNetKATPolicy{
 				completeTest:       tt.fields.completeTest,
 				completeAssignment: tt.fields.completeAssignment,
 			}

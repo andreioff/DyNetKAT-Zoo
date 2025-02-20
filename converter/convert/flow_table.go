@@ -111,16 +111,16 @@ func (ft *FlowTable) Extend(otherFt *FlowTable) {
 	}
 }
 
-func (ft *FlowTable) toNetKATPolicies() []*SimpleNetKATPolicy {
-	policies := []*SimpleNetKATPolicy{}
+func (ft *FlowTable) ToNetKATPolicies() []SimpleNetKATPolicy {
+	policies := []SimpleNetKATPolicy{}
 
 	for pair := ft.entries.Oldest(); pair != nil; pair = pair.Next() {
 		destHostId, frs := pair.Key, pair.Value
 		for _, fr := range frs {
-			policy := NewSimpleNetKATPolicy()
-			policy.AddTest(DST_STRING, strconv.FormatInt(destHostId, 10))
-			policy.AddTest(PORT_STRING, strconv.FormatInt(fr.inPort, 10))
-			policy.AddAssignment(PORT_STRING, strconv.FormatInt(fr.outPort, 10))
+			policy := NewSimpleNetKATPolicy().
+				AddTest(DST_STRING, strconv.FormatInt(destHostId, 10)).
+				AddTest(PORT_STRING, strconv.FormatInt(fr.inPort, 10)).
+				AddAssignment(PORT_STRING, strconv.FormatInt(fr.outPort, 10))
 			policies = append(policies, policy)
 		}
 	}
@@ -129,7 +129,7 @@ func (ft *FlowTable) toNetKATPolicies() []*SimpleNetKATPolicy {
 }
 
 func (ft *FlowTable) ToNetKATStr(AndSym, EqSym, AssignSym, OrSym string) string {
-	policies := ft.toNetKATPolicies()
+	policies := ft.ToNetKATPolicies()
 	var sb strings.Builder
 
 	prefix := ""

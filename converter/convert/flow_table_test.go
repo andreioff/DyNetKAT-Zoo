@@ -476,21 +476,21 @@ func TestFlowTable_ToNetKATPolicies(t *testing.T) {
 	tests := []struct {
 		name   string
 		fields fields
-		want   []*SimpleNetKATPolicy
+		want   []SimpleNetKATPolicy
 	}{
 		{
 			name: "No Entries [Success]",
 			fields: fields{
 				entries: getEmptyEntries(),
 			},
-			want: []*SimpleNetKATPolicy{},
+			want: []SimpleNetKATPolicy{},
 		},
 		{
 			name: "Non-emtpy Flow Table [Success]",
 			fields: fields{
 				entries: getMockFTEntries1(),
 			},
-			want: []*SimpleNetKATPolicy{
+			want: []SimpleNetKATPolicy{
 				{
 					completeTest: []util.StrTup{
 						{Fst: DST_STRING, Snd: "0"},
@@ -534,7 +534,7 @@ func TestFlowTable_ToNetKATPolicies(t *testing.T) {
 			ft := &FlowTable{
 				entries: tt.fields.entries,
 			}
-			assert.ElementsMatch(t, tt.want, ft.toNetKATPolicies())
+			assert.ElementsMatch(t, tt.want, ft.ToNetKATPolicies())
 		})
 	}
 }

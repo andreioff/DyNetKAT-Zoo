@@ -41,7 +41,7 @@ func (phc *PairwiseHostConn) populateControllerNewFRSeqs(
 ) error {
 	for i, h1 := range newHosts {
 		for j, h2 := range newHosts {
-			if i == j {
+			if i >= j {
 				continue
 			}
 			err := phc.addHostPairConnFRSeq(h1, h2)

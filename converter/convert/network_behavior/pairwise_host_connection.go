@@ -28,7 +28,7 @@ func (phc *PairwiseHostConn) ModifyNetwork(n *convert.Network, config BehaviorCo
 		return err
 	}
 
-	newHosts, err := n.CreateHosts(config.Outside_hosts_nr)
+	newHosts, err := n.CreateRandomHosts(config.Outside_hosts_nr)
 	if err != nil {
 		return err
 	}

@@ -84,7 +84,7 @@ func (n *Network) TopoEdgesLen() int {
 }
 
 func (n *Network) assignHosts(hostsNr uint) error {
-	hosts, err := n.CreateHosts(hostsNr)
+	hosts, err := n.CreateRandomHosts(hostsNr)
 	if err != nil {
 		return err
 	}
@@ -94,7 +94,7 @@ func (n *Network) assignHosts(hostsNr uint) error {
 	return nil
 }
 
-func (n *Network) CreateHosts(hostsNr uint) ([]*Host, error) {
+func (n *Network) CreateRandomHosts(hostsNr uint) ([]*Host, error) {
 	hosts := []*Host{}
 
 	randSws, err := n.pickRandomSwitches(hostsNr)
@@ -104,13 +104,12 @@ func (n *Network) CreateHosts(hostsNr uint) ([]*Host, error) {
 
 	for _, randSw := range randSws {
 		newHost, err := NewHost(n.nextHostId, n.portNr, randSw)
-		n.nextHostId++
-
 		if err != nil {
 			return []*Host{}, err
 		}
-		hosts = append(hosts, newHost)
 
+		hosts = append(hosts, newHost)
+		n.nextHostId++
 		n.portNr++
 	}
 

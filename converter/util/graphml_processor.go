@@ -13,7 +13,8 @@ import (
 )
 
 const (
-	GRAPHML_EXT = ".graphml"
+	GRAPHML_EXT    = ".graphml"
+	NAME_ATTRIBUTE = "name"
 )
 
 func getPathsFromDir(dirPath string) ([]string, error) {
@@ -32,7 +33,7 @@ func getPathsFromDir(dirPath string) ([]string, error) {
 	return paths, nil
 }
 
-func GetGraphMLs(dirPath string) ([]graphml.GraphML, error) {
+func ReadGraphMLs(dirPath string) ([]graphml.GraphML, error) {
 	paths, err := getPathsFromDir(dirPath)
 	if err != nil {
 		log.Printf("Failed to read file paths!\n%s", err.Error())
@@ -47,14 +48,13 @@ func GetGraphMLs(dirPath string) ([]graphml.GraphML, error) {
 			continue
 		}
 
-		fName := r.Name()[strings.LastIndex(r.Name(), "/")+1:]
+		fName := GetFileBasename(path)
 		g := *graphml.NewGraphML(fName)
 		err = g.Decode(r)
 		if err != nil {
 			log.Printf("Something went wrong while decoding %s.\n%s", fName, err.Error())
 			continue
 		}
-
 		graphs = append(graphs, g)
 	}
 
@@ -100,7 +100,7 @@ func GraphMLsToGraphs(gmls []graphml.GraphML) om.OrderedMap[string, Graph] {
 		g, err := GraphMLToGraph(gml)
 		if err != nil {
 			log.Printf(
-				"Could not convert GraphML instace: %s! Skipping...\n%s.",
+				"Could not convert GraphML instace: %s! Error was: %s. Skipping...\n",
 				gml.Description,
 				err.Error(),
 			)

@@ -6,6 +6,8 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"strings"
 	"text/template"
 )
 
@@ -32,13 +34,9 @@ func init() {
 	tmpls = templates
 }
 
-func getFilePath(dir, fileName string) string {
-	filePath := dir + fileName
-	if dir[len(dir)-1] != '/' {
-		filePath = dir + "/" + fileName
-	}
-
-	return filePath
+func GetFileBasename(path string) string {
+	_, fName := filepath.Split(path)
+	return strings.Split(fName, ".")[0]
 }
 
 func createDir(dir string) error {
@@ -69,7 +67,7 @@ func WriteToNewFile(dir, fileName, data string) error {
 	if err != nil {
 		return err
 	}
-	filePath := getFilePath(dir, fileName)
+	filePath := filepath.Join(dir, fileName)
 
 	return os.WriteFile(filePath, []byte(data), FILE_PERM)
 }

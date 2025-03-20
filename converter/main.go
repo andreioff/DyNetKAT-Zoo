@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 
 	"utwente.nl/topology-to-dynetkat-coverter/convert/encode"
@@ -14,87 +15,83 @@ const (
 )
 
 var NETWORK_IDS []string = []string{
-	"Atmnet.graphml",        // 21 nodes
-	"Arpanet196912.graphml", // 4 nodes
-	"Dataxchange.graphml",   // 6 nodes
-	"Renam.graphml",         // 5 nodes
-	"Netrail.graphml",       // 7 nodes
-	"Getnet.graphml",        // 7 nodes
+	"Atmnet",        // 21 nodes
+	"Arpanet196912", // 4 nodes
+	"Dataxchange",   // 6 nodes
+	"Renam",         // 5 nodes
+	"Netrail",       // 7 nodes
+	"Getnet",        // 7 nodes
+	"Kdl",           // 754 nodes -- largest network
 }
-var NETWORK_ID string = NETWORK_IDS[1]
+var NETWORK_ID string = NETWORK_IDS[0]
 
 func main() {
-	util.SetRandGenSeed(3)
-
-	graphMLs, err := util.GetGraphMLs(DIR)
+	graphMLs, err := util.ReadGraphMLs(DIR)
 	if err != nil {
-		log.Fatalf("Failed to load graphs from directory: %s\n%s", DIR, err.Error())
+		log.Fatalf("Failed to read graphs from directory: %s\n%s", DIR, err.Error())
 	}
 
 	gs := util.GraphMLsToGraphs(graphMLs)
 	validTopos := util.ValidateTopologies(gs)
+	fmt.Println()
+	seed := int64(15)
 
-	log.Printf("Generating DyNetKAT encoding for topology with id: %s...\n", NETWORK_ID)
-	topo, exists := validTopos.Get(NETWORK_ID)
-
-	if !exists {
-		log.Fatalf("Topology with name '%s' is either invalid or does not exist\n", NETWORK_ID)
+	for pair := validTopos.Oldest(); pair != nil; pair = pair.Next() {
+		generateEncoding(pair.Key, pair.Value, seed)
 	}
+}
 
+func generateEncoding(topoName string, topo util.Graph, seed int64) {
+	log.Printf("Generating DyNetKAT encoding for topology with id: %s...\n", topoName)
 	config := behavior.BehaviorConfig{
-		Hosts_nr:         2,
-		Outside_hosts_nr: 1,
+		Hosts_nr:         0,
+		Outside_hosts_nr: uint(topo.Nodes().Len() / 2),
 		Controllers_nr:   1,
 	}
+	if topo.Nodes().Len() < 10 {
+		config.Outside_hosts_nr = uint(topo.Nodes().Len())
+	}
+	util.SetRandGenSeed(seed)
+
 	network, err := behavior.NewNetworkWithBehavior(
 		topo,
-		&behavior.LinkCostChanging{},
-		// &behavior.OutsideHostConn{},
+		&behavior.PairwiseHostConn{},
 		config,
 	)
 	if err != nil {
-		log.Fatalln(err)
+		log.Fatalf("Error: %s\n", err.Error())
 	}
 
 	ei, err := encode.NewEncodingInfo(network)
 	if err != nil {
-		log.Fatalln(err)
+		log.Fatalf("Error: %s\n", err.Error())
 	}
 
-	// encoder := getEncoder("big-switch-proactive")
-	encoder := getEncoder("big-switch")
-	fmtNet := encoder.Encode(ei)
+	fmtNet, err := encode.NewJsonEncoder().Encode(ei)
+	if err != nil {
+		log.Println("Failed to encode data!")
+		log.Printf("Error: %s\n", err.Error())
+	}
 
-	err = util.WriteToNewFile(OUTPUT_DIR, "output.txt", fmtNet)
+	err = util.WriteToNewFile(
+		OUTPUT_DIR,
+		fmt.Sprintf(
+			"output_l%d_%s_s%d_h%d_oh%d_c%d.json",
+			topo.Nodes().Len(),
+			topoName,
+			seed,
+			config.Hosts_nr,
+			config.Outside_hosts_nr,
+			config.Controllers_nr,
+		),
+		fmtNet,
+	)
 	if err != nil {
 		log.Println("Failed to write output file!")
 		log.Printf("Error: %s\n", err.Error())
 		return
 	} else {
 		log.Println("Done generating text file!")
-	}
-
-	err = util.WriteToNewPdf(OUTPUT_DIR, "output", fmtNet)
-	if err != nil {
-		log.Println("Failed to write output file!")
-		log.Printf("Error: %s\n", err.Error())
-		return
-	} else {
-		log.Println("Done generating PDF!")
-	}
-}
-
-func getEncoder(encoderOption string) encode.NetworkEncoder {
-	switch encoderOption {
-	case "big-switch-proactive":
-		return encode.NewLatexBigSwitchEncoder(true)
-	case "big-switch":
-		return encode.NewLatexBigSwitchEncoder(false)
-	case "simple-proactive":
-		return encode.NewLatexSimpleEncoder(true)
-	case "simple":
-		return encode.NewLatexSimpleEncoder(false)
-	default:
-		return encode.NewLatexBigSwitchEncoder(false)
+		fmt.Println()
 	}
 }

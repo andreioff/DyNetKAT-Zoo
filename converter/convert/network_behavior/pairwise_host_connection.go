@@ -23,17 +23,35 @@ func (phc *PairwiseHostConn) ModifyNetwork(n *convert.Network, config BehaviorCo
 	}
 	phc.net = n
 
-	err := n.AddControllers(config.Controllers_nr)
+	err := n.AddControllersRandomSplit(config.Controllers_nr)
 	if err != nil {
 		return err
 	}
 
-	newHosts, err := n.CreateRandomHosts(config.Outside_hosts_nr)
+	newHosts, err := phc.createHosts()
 	if err != nil {
 		return err
 	}
-
 	return phc.populateControllerNewFRSeqs(newHosts)
+}
+
+func (phc *PairwiseHostConn) createHosts() ([]*convert.Host, error) {
+	swIdPair, err := phc.net.GetFarthestApartSwitches()
+	if err != nil {
+		return []*convert.Host{}, err
+	}
+
+	host1, err := phc.net.CreateHost(swIdPair.Fst)
+	if err != nil {
+		return []*convert.Host{}, err
+	}
+
+	host2, err := phc.net.CreateHost(swIdPair.Snd)
+	if err != nil {
+		return []*convert.Host{}, err
+	}
+
+	return []*convert.Host{host1, host2}, nil
 }
 
 func (phc *PairwiseHostConn) populateControllerNewFRSeqs(

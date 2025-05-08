@@ -24,6 +24,7 @@ const (
 	ErrEdgeNotMappedToLink            = "Edge is not mapped to a link!"
 	ErrNetworkHasNoSwitches           = "Network has no switches!"
 	ErrNoPathBetweenSwitches          = "Path between switches with IDs '%d' and '%d' does not exist!"
+	ErrNoPathExists                   = "No path exists between any of the switches in the network!"
 	ErrFailedToComputePath            = "Failed to compute path between nodes with IDs '%d' and '%d'!"
 	ErrHostsNrAtLeast2                = "Number of hosts must be at least 2!"
 	ErrControllersNrAtLeast1          = "Number of controllers to be added must be at least 1!"

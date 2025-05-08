@@ -25,7 +25,7 @@ func (ohc *OutsideHostConn) ModifyNetwork(n *convert.Network, config BehaviorCon
 		return err
 	}
 
-	err = n.AddControllers(config.Controllers_nr)
+	err = n.AddControllersRandomSplit(config.Controllers_nr)
 	if err != nil {
 		return err
 	}

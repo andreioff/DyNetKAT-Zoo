@@ -5,6 +5,7 @@ import (
 	"gonum.org/v1/gonum/graph"
 	"gonum.org/v1/gonum/graph/path"
 	"gonum.org/v1/gonum/graph/simple"
+
 	"utwente.nl/topology-to-dynetkat-coverter/util"
 )
 
@@ -83,6 +84,23 @@ func (n *Network) TopoEdgesLen() int {
 	return n.topology.Edges().Len()
 }
 
+func (n *Network) GetFarthestApartSwitches() (util.I64Tup, error) {
+	swIdPair := util.NewI64Tup(-1, -1)
+	if n.shortestPaths.Len() == 0 {
+		return swIdPair, util.NewError(util.ErrNoPathExists)
+	}
+
+	maxLen := 0
+	for pair := n.shortestPaths.Oldest(); pair != nil; pair = pair.Next() {
+		if len(pair.Value) > maxLen {
+			maxLen = len(pair.Value)
+			swIdPair = pair.Key
+		}
+	}
+
+	return swIdPair, nil
+}
+
 func (n *Network) assignHosts(hostsNr uint) error {
 	hosts, err := n.CreateRandomHosts(hostsNr)
 	if err != nil {
@@ -92,6 +110,23 @@ func (n *Network) assignHosts(hostsNr uint) error {
 	n.hosts = hosts
 
 	return nil
+}
+
+func (n *Network) CreateHost(nodeId int64) (*Host, error) {
+	sw, exists := n.nodeIdToSw.Get(nodeId)
+	if !exists {
+		return &Host{}, util.NewError(util.ErrNoSwitchWithNodeId, nodeId)
+	}
+
+	host, err := NewHost(n.nextHostId, n.portNr, sw)
+	if err != nil {
+		return &Host{}, err
+	}
+
+	n.nextHostId++
+	n.portNr++
+
+	return host, nil
 }
 
 func (n *Network) CreateRandomHosts(hostsNr uint) ([]*Host, error) {
@@ -248,7 +283,7 @@ All switches in the network are equally divided between these controllers. If th
 cannot be equally divided, the remainder is uniformly distributed again, 1 switch per controller
 starting from the first controller.
 */
-func (n *Network) AddControllers(controllersNr uint) error {
+func (n *Network) AddControllersRandomSplit(controllersNr uint) error {
 	if controllersNr == 0 {
 		return util.NewError(util.ErrControllersNrAtLeast1)
 	}

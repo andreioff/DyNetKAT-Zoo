@@ -26,7 +26,7 @@ func (lcc *LinkCostChanging) ModifyNetwork(n *convert.Network, config BehaviorCo
 		return err
 	}
 
-	err = n.AddControllers(config.Controllers_nr)
+	err = n.AddControllersRandomSplit(config.Controllers_nr)
 	if err != nil {
 		return err
 	}

@@ -87,10 +87,10 @@ func TestNewSwitch(t *testing.T) {
 				links: []*Link{},
 			},
 			want: &Switch{
-				topoNode:   simple.Node(1),
-				links:      []*Link{},
-				controller: nil,
-				flowTable:  getMockEmptyFT(),
+				topoNode:    simple.Node(1),
+				links:       []*Link{},
+				controllers: []*Controller{},
+				flowTable:   getMockEmptyFT(),
 			},
 			wantErr: "",
 		},
@@ -101,10 +101,10 @@ func TestNewSwitch(t *testing.T) {
 				links: []*Link{mockLink1, mockLink2},
 			},
 			want: &Switch{
-				topoNode:   simple.Node(1),
-				links:      []*Link{mockLink1, mockLink2},
-				controller: nil,
-				flowTable:  getMockEmptyFT(),
+				topoNode:    simple.Node(1),
+				links:       []*Link{mockLink1, mockLink2},
+				controllers: []*Controller{},
+				flowTable:   getMockEmptyFT(),
 			},
 			wantErr: "",
 		},
@@ -125,10 +125,10 @@ func TestNewSwitch(t *testing.T) {
 
 func TestSwitchGetters(t *testing.T) {
 	type fields struct {
-		topoNode   graph.Node
-		controller *Controller
-		flowTable  *FlowTable
-		links      []*Link
+		topoNode    graph.Node
+		controllers []*Controller
+		flowTable   *FlowTable
+		links       []*Link
 	}
 	tests := []struct {
 		name        string
@@ -138,16 +138,16 @@ func TestSwitchGetters(t *testing.T) {
 		{
 			name: "Switch getters [Sucess]",
 			fields: fields{
-				topoNode:   simple.Node(1),
-				controller: mockC,
-				flowTable:  getMockEmptyFT(),
-				links:      []*Link{mockLink1, mockLink2},
+				topoNode:    simple.Node(1),
+				controllers: []*Controller{mockC},
+				flowTable:   getMockEmptyFT(),
+				links:       []*Link{mockLink1, mockLink2},
 			},
 			assertSetup: func(t *testing.T, sw *Switch) {
 				assert.NotNil(t, sw)
 
-				assert.NotNil(t, sw.Controller())
-				assert.EqualValues(t, mockC, sw.Controller())
+				assert.Equal(t, 1, len(sw.Controllers()))
+				assert.EqualValues(t, mockC, sw.Controllers()[0])
 
 				assert.NotNil(t, sw.TopoNode())
 				assert.EqualValues(t, simple.Node(1), sw.TopoNode())
@@ -160,10 +160,10 @@ func TestSwitchGetters(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			sw := &Switch{
-				topoNode:   tt.fields.topoNode,
-				controller: tt.fields.controller,
-				flowTable:  tt.fields.flowTable,
-				links:      tt.fields.links,
+				topoNode:    tt.fields.topoNode,
+				controllers: tt.fields.controllers,
+				flowTable:   tt.fields.flowTable,
+				links:       tt.fields.links,
 			}
 			// Assert the result
 			if tt.assertSetup != nil {
@@ -173,69 +173,84 @@ func TestSwitchGetters(t *testing.T) {
 	}
 }
 
-func TestSwitch_SetController(t *testing.T) {
+func TestSwitch_AddController(t *testing.T) {
 	type fields struct {
-		topoNode   graph.Node
-		controller *Controller
-		flowTable  *FlowTable
-		links      []*Link
+		topoNode    graph.Node
+		controllers []*Controller
+		flowTable   *FlowTable
+		links       []*Link
 	}
 	type args struct {
-		c *Controller
+		cs []*Controller
 	}
 	tests := []struct {
 		name   string
 		fields fields
 		args   args
-		want   *Controller
+		want   []*Controller
 	}{
 		{
-			name: "Set valid controller [Success]",
+			name: "Add valid controller [Success]",
 			fields: fields{
-				topoNode:   simple.Node(1),
-				controller: nil,
-				flowTable:  nil,
-				links:      []*Link{},
+				topoNode:    simple.Node(1),
+				controllers: []*Controller{},
+				flowTable:   nil,
+				links:       []*Link{},
 			},
 			args: args{
-				c: mockC,
+				cs: []*Controller{mockC},
 			},
-			want: mockC,
+			want: []*Controller{mockC},
 		},
 		{
-			name: "Set nil controller [Success]",
+			name: "Add nil controller [Success]",
 			fields: fields{
-				topoNode:   simple.Node(1),
-				controller: mockC,
-				flowTable:  nil,
-				links:      []*Link{},
+				topoNode:    simple.Node(1),
+				controllers: []*Controller{},
+				flowTable:   nil,
+				links:       []*Link{},
 			},
 			args: args{
-				c: nil,
+				cs: []*Controller{},
 			},
-			want: nil,
+			want: []*Controller{},
+		},
+		{
+			name: "Add duplicate controller [Success]",
+			fields: fields{
+				topoNode:    simple.Node(1),
+				controllers: []*Controller{},
+				flowTable:   nil,
+				links:       []*Link{},
+			},
+			args: args{
+				cs: []*Controller{mockC, mockC},
+			},
+			want: []*Controller{mockC},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := &Switch{
-				topoNode:   tt.fields.topoNode,
-				controller: tt.fields.controller,
-				flowTable:  tt.fields.flowTable,
-				links:      tt.fields.links,
+				topoNode:    tt.fields.topoNode,
+				controllers: tt.fields.controllers,
+				flowTable:   tt.fields.flowTable,
+				links:       tt.fields.links,
 			}
-			s.SetController(tt.args.c)
-			assert.EqualValues(t, tt.want, s.controller)
+			for _, c := range tt.args.cs {
+				s.AddController(c)
+			}
+			assert.EqualValues(t, tt.want, s.controllers)
 		})
 	}
 }
 
 func TestSwitch_GetLinkPorts(t *testing.T) {
 	type fields struct {
-		topoNode   graph.Node
-		controller *Controller
-		flowTable  *FlowTable
-		links      []*Link
+		topoNode    graph.Node
+		controllers []*Controller
+		flowTable   *FlowTable
+		links       []*Link
 	}
 	type args struct {
 		otherNodeId int64
@@ -251,10 +266,10 @@ func TestSwitch_GetLinkPorts(t *testing.T) {
 		{
 			name: "Empty link array [Error]",
 			fields: fields{
-				topoNode:   simple.Node(1),
-				controller: nil,
-				flowTable:  getMockEmptyFT(),
-				links:      []*Link{},
+				topoNode:    simple.Node(1),
+				controllers: []*Controller{},
+				flowTable:   getMockEmptyFT(),
+				links:       []*Link{},
 			},
 			args:    args{-1},
 			wantErr: util.ErrNoLinkBetweenSwitches,
@@ -262,9 +277,9 @@ func TestSwitch_GetLinkPorts(t *testing.T) {
 		{
 			name: "No link found [Error]",
 			fields: fields{
-				topoNode:   simple.Node(1),
-				controller: nil,
-				flowTable:  getMockEmptyFT(),
+				topoNode:    simple.Node(1),
+				controllers: []*Controller{},
+				flowTable:   getMockEmptyFT(),
 				links: []*Link{
 					{
 						topoEdge: simple.WeightedEdge{
@@ -310,9 +325,9 @@ func TestSwitch_GetLinkPorts(t *testing.T) {
 		{
 			name: "Outgoing link [Success]",
 			fields: fields{
-				topoNode:   simple.Node(1),
-				controller: nil,
-				flowTable:  getMockEmptyFT(),
+				topoNode:    simple.Node(1),
+				controllers: []*Controller{},
+				flowTable:   getMockEmptyFT(),
 				links: []*Link{
 					{
 						topoEdge: simple.WeightedEdge{
@@ -350,9 +365,9 @@ func TestSwitch_GetLinkPorts(t *testing.T) {
 		{
 			name: "Incoming link [Success]",
 			fields: fields{
-				topoNode:   simple.Node(1),
-				controller: nil,
-				flowTable:  getMockEmptyFT(),
+				topoNode:    simple.Node(1),
+				controllers: []*Controller{},
+				flowTable:   getMockEmptyFT(),
 				links: []*Link{
 					{
 						topoEdge: simple.WeightedEdge{
@@ -390,9 +405,9 @@ func TestSwitch_GetLinkPorts(t *testing.T) {
 		{
 			name: "Duplicate link [Success]",
 			fields: fields{
-				topoNode:   simple.Node(1),
-				controller: nil,
-				flowTable:  getMockEmptyFT(),
+				topoNode:    simple.Node(1),
+				controllers: []*Controller{},
+				flowTable:   getMockEmptyFT(),
 				links: []*Link{
 					{
 						topoEdge: simple.WeightedEdge{
@@ -440,10 +455,10 @@ func TestSwitch_GetLinkPorts(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := &Switch{
-				topoNode:   tt.fields.topoNode,
-				controller: tt.fields.controller,
-				flowTable:  tt.fields.flowTable,
-				links:      tt.fields.links,
+				topoNode:    tt.fields.topoNode,
+				controllers: tt.fields.controllers,
+				flowTable:   tt.fields.flowTable,
+				links:       tt.fields.links,
 			}
 			gotFromPort, gotToPort, err := s.GetLinkPorts(tt.args.otherNodeId)
 			if tt.wantErr == "" {

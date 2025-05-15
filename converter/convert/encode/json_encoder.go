@@ -82,12 +82,18 @@ func getOrSetDNKSwitch(dnkSwMap map[int64]*DNKSwitch, swId int64) *DNKSwitch {
 }
 
 type JsonEncoder struct {
-	sym SymbolEncoding
+	sym           SymbolEncoding
+	nonDetUpdates bool
 }
 
-func NewJsonEncoder() NetworkEncoder {
+/*
+nonDetUpdates: whether to install the flow table updates of the controllers in non-deterministically.
+By default they are installed in sequence (using ;)
+*/
+func NewJsonEncoder(nonDetUpdates bool) NetworkEncoder {
 	return JsonEncoder{
-		sym: DYNETKAT_ASCII_SYMBOLS,
+		sym:           DYNETKAT_ASCII_SYMBOLS,
+		nonDetUpdates: nonDetUpdates,
 	}
 }
 
@@ -326,9 +332,7 @@ func (je JsonEncoder) encodeContFlowTables(
 	flowTables om.OrderedMap[int64, *convert.FlowTable],
 	ei EncodingInfo,
 ) string {
-	var sb strings.Builder
-
-	prefix := ""
+	ftCommStrs := []string{}
 	for pair := flowTables.Oldest(); pair != nil; pair = pair.Next() {
 		swIndexStr := ei.GetSwIndexStr(pair.Key)
 		commStr := je.encodeFlowTableComm(swIndexStr, *pair.Value, je.sym.SEND)
@@ -336,12 +340,18 @@ func (je JsonEncoder) encodeContFlowTables(
 			continue
 		}
 
-		sb.WriteString(prefix)
-		sb.WriteString(je.buildSeqExpr([]string{commStr, cName}))
-		prefix = je.sym.NONDET
+		if je.nonDetUpdates {
+			ftCommStrs = append(ftCommStrs, je.buildSeqExpr([]string{commStr, cName}))
+		} else {
+			ftCommStrs = append(ftCommStrs, commStr)
+		}
 	}
 
-	return sb.String()
+	if je.nonDetUpdates {
+		return strings.Join(ftCommStrs, je.sym.NONDET)
+	}
+	ftCommStrs = append(ftCommStrs, cName)
+	return je.buildSeqExpr(ftCommStrs)
 }
 
 func (je JsonEncoder) encodeFlowTableComm(

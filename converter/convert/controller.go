@@ -40,7 +40,7 @@ func NewController(id int64, switches []*Switch) (*Controller, error) {
 	}
 
 	for _, s := range switches {
-		s.SetController(c)
+		s.AddController(c)
 	}
 
 	return c, nil

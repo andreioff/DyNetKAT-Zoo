@@ -6,6 +6,12 @@ import (
 	"utwente.nl/topology-to-dynetkat-coverter/util"
 )
 
+type HostPair = util.Tuple[*convert.Host, *convert.Host]
+
+func NewHostPair(h1 *convert.Host, h2 *convert.Host) HostPair {
+	return HostPair{Fst: h1, Snd: h2}
+}
+
 /*
 Given an empty network, assigns a set of flow rule sequences
 that will be installed on the corresponding switches to
@@ -14,7 +20,17 @@ each other. Each sequence contains the necessary flow rules to
 establish the connection between a pair of hosts.
 */
 type PairwiseHostConn struct {
-	net *convert.Network
+	net                *convert.Network
+	alternateDirection bool
+}
+
+/*
+alternateDirection: whether to alternate the direction of the host connection between controllers.
+By default, each controller is assigned a unique host pair and installs the
+connection in both ways, i.e. from host1 to host2 and from host2 to host1.
+*/
+func NewPairwiseHostConn(alternateDirection bool) *PairwiseHostConn {
+	return &PairwiseHostConn{net: nil, alternateDirection: alternateDirection}
 }
 
 func (phc *PairwiseHostConn) ModifyNetwork(n *convert.Network, config BehaviorConfig) error {
@@ -23,62 +39,80 @@ func (phc *PairwiseHostConn) ModifyNetwork(n *convert.Network, config BehaviorCo
 	}
 	phc.net = n
 
-	err := n.AddControllersRandomSplit(config.Controllers_nr)
+	err := n.AddControllersNoSplit(config.Controllers_nr)
 	if err != nil {
 		return err
 	}
 
-	newHosts, err := phc.createHosts()
+	newHostPairs, err := phc.createHostPairs()
 	if err != nil {
 		return err
 	}
-	return phc.populateControllerNewFRSeqs(newHosts)
+	return phc.populateControllerNewFTs(newHostPairs)
 }
 
-func (phc *PairwiseHostConn) createHosts() ([]*convert.Host, error) {
+func (phc *PairwiseHostConn) createHostPairs() ([]HostPair, error) {
 	swIdPair, err := phc.net.GetFarthestApartSwitches()
 	if err != nil {
-		return []*convert.Host{}, err
+		return []HostPair{}, err
 	}
 
-	host1, err := phc.net.CreateHost(swIdPair.Fst)
-	if err != nil {
-		return []*convert.Host{}, err
+	n := len(phc.net.Controllers())
+	if phc.alternateDirection {
+		n = (len(phc.net.Controllers()) + 1) / 2
 	}
 
-	host2, err := phc.net.CreateHost(swIdPair.Snd)
-	if err != nil {
-		return []*convert.Host{}, err
-	}
+	hosts := []HostPair{}
+	for range n {
+		host1, err := phc.net.CreateHost(swIdPair.Fst)
+		if err != nil {
+			return []HostPair{}, err
+		}
 
-	return []*convert.Host{host1, host2}, nil
+		host2, err := phc.net.CreateHost(swIdPair.Snd)
+		if err != nil {
+			return []HostPair{}, err
+		}
+
+		hosts = append(hosts, NewHostPair(host1, host2))
+	}
+	return hosts, nil
 }
 
-func (phc *PairwiseHostConn) populateControllerNewFRSeqs(
-	newHosts []*convert.Host,
+func (phc *PairwiseHostConn) populateControllerNewFTs(hostPairs []HostPair,
 ) error {
-	for i, h1 := range newHosts {
-		for j, h2 := range newHosts {
-			if i >= j {
-				continue
-			}
-			err := phc.addHostPairConnFRSeq(h1, h2)
+	hpIndex := 0
+	for i, controller := range phc.net.Controllers() {
+		host1, host2 := hostPairs[hpIndex].Fst, hostPairs[hpIndex].Snd
+		if phc.alternateDirection && i%2 == 1 {
+			err := phc.addHostPairConnFRs(controller, host2, host1)
 			if err != nil {
 				return err
 			}
+			hpIndex += 1
+			continue
+		}
+		err := phc.addHostPairConnFRs(controller, host1, host2)
+		if err != nil {
+			return err
+		}
+		if !phc.alternateDirection {
+			hpIndex += 1
 		}
 	}
 	return nil
 }
 
-func (phc *PairwiseHostConn) addHostPairConnFRSeq(
-	src, dest *convert.Host,
+func (phc *PairwiseHostConn) addHostPairConnFRs(
+	ct *convert.Controller, src, dest *convert.Host,
 ) error {
 	switch {
 	case src == nil:
 		return util.NewError(util.ErrNilArgument, "src")
 	case dest == nil:
 		return util.NewError(util.ErrNilArgument, "dest")
+	case ct == nil:
+		return util.NewError(util.ErrNilArgument, "ct")
 	}
 
 	entries, err := phc.net.GetFlowRulesForSwitchPath(
@@ -91,12 +125,7 @@ func (phc *PairwiseHostConn) addHostPairConnFRSeq(
 		return err
 	}
 
-	controllerSeqs, err := phc.makeFRSequences(dest.ID(), entries)
-	if err != nil {
-		return err
-	}
-
-	err = phc.addFRSequencesToControllers(controllerSeqs)
+	err = phc.addFRsToController(ct, dest.ID(), entries)
 	if err != nil {
 		return err
 	}
@@ -104,51 +133,18 @@ func (phc *PairwiseHostConn) addHostPairConnFRSeq(
 	return nil
 }
 
-func (phc *PairwiseHostConn) makeFRSequences(
+func (phc *PairwiseHostConn) addFRsToController(
+	ct *convert.Controller,
 	destHostId int64,
 	entries om.OrderedMap[int64, []convert.FlowRule],
-) (om.OrderedMap[int64, *convert.FlowRuleSequence], error) {
-	controllerSeqs := *om.New[int64, *convert.FlowRuleSequence]()
-
+) error {
 	for pair := entries.Oldest(); pair != nil; pair = pair.Next() {
 		nodeId, frs := pair.Key, pair.Value
-		sw, err := phc.net.GetSwitch(nodeId)
-		if err != nil {
-			return controllerSeqs, err
-		}
-
-		c := sw.Controller()
-		if c == nil {
-			return controllerSeqs, util.NewError(util.ErrSwitchHasNilController)
-		}
-
-		seq, exists := controllerSeqs.Get(c.ID())
-		if !exists {
-			seq = convert.NewFlowRuleSequence()
-			controllerSeqs.Set(c.ID(), seq)
-		}
-		for _, fr := range frs {
-			seq.AddEntry(nodeId, destHostId, fr)
-		}
-	}
-
-	return controllerSeqs, nil
-}
-
-func (phc *PairwiseHostConn) addFRSequencesToControllers(
-	controllerSeqs om.OrderedMap[int64, *convert.FlowRuleSequence],
-) error {
-	for pair := controllerSeqs.Oldest(); pair != nil; pair = pair.Next() {
-		cid, seq := pair.Key, pair.Value
-		c, err := phc.net.GetController(cid)
-		if err != nil {
-			return err
-		}
-
-		err = c.AddNewFlowRuleSequence(seq)
+		err := ct.AddNewFlowRules(nodeId, destHostId, frs, false)
 		if err != nil {
 			return err
 		}
 	}
+
 	return nil
 }

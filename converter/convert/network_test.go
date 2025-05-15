@@ -14,9 +14,9 @@ import (
 
 func getMockEmptySwitch(nodeId int) *Switch {
 	return &Switch{
-		topoNode:   simple.Node(nodeId),
-		controller: nil,
-		flowTable:  getMockEmptyFT(),
+		topoNode:    simple.Node(nodeId),
+		controllers: []*Controller{},
+		flowTable:   getMockEmptyFT(),
 	}
 }
 

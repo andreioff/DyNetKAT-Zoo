@@ -103,16 +103,17 @@ func (_ *LinkCostChanging) removeDuplicateFTs(n *convert.Network) (bool, error) 
 
 	allRemoved := true
 	for _, sw := range n.Switches() {
-		c := sw.Controller()
-		if c == nil {
-			return false, util.NewError(util.ErrSwitchHasNilController)
-		}
+		for _, c := range sw.Controllers() {
+			if c == nil {
+				return false, util.NewError(util.ErrSwitchHasNilController)
+			}
 
-		newFt, newFtExists := c.NewFlowTables().Get(sw.TopoNode().ID())
-		if newFtExists && newFt.IsEqual(sw.FlowTable()) {
-			c.NewFlowTables().Delete(sw.TopoNode().ID())
-		} else if newFtExists {
-			allRemoved = false
+			newFt, newFtExists := c.NewFlowTables().Get(sw.TopoNode().ID())
+			if newFtExists && newFt.IsEqual(sw.FlowTable()) {
+				c.NewFlowTables().Delete(sw.TopoNode().ID())
+			} else if newFtExists {
+				allRemoved = false
+			}
 		}
 	}
 

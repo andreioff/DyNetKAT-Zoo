@@ -52,14 +52,15 @@ func addEntriesToControllerNewFlowTables(
 			return err
 		}
 
-		c := sw.Controller()
-		if c == nil {
-			return util.NewError(util.ErrSwitchHasNilController)
-		}
+		for _, c := range sw.Controllers() {
+			if c == nil {
+				return util.NewError(util.ErrSwitchHasNilController)
+			}
 
-		err = c.AddNewFlowRules(nodeId, destHostId, frs, duplicateSwFT)
-		if err != nil {
-			return err
+			err = c.AddNewFlowRules(nodeId, destHostId, frs, duplicateSwFT)
+			if err != nil {
+				return err
+			}
 		}
 	}
 

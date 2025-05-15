@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 
 	om "github.com/wk8/go-ordered-map/v2"
@@ -26,7 +27,7 @@ func getPathsFromDir(dirPath string) ([]string, error) {
 	paths := []string{}
 	for _, file := range files {
 		if !file.IsDir() && strings.HasSuffix(file.Name(), GRAPHML_EXT) {
-			paths = append(paths, dirPath+file.Name())
+			paths = append(paths, filepath.Join(dirPath, file.Name()))
 		}
 	}
 

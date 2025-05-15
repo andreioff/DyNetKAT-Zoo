@@ -42,14 +42,14 @@ func TestNewController(t *testing.T) {
 			args: args{
 				switches: []*Switch{
 					{
-						topoNode:   simple.Node(1),
-						controller: nil,
-						flowTable:  nil,
+						topoNode:    simple.Node(1),
+						controllers: []*Controller{},
+						flowTable:   nil,
 					},
 					{
-						topoNode:   simple.Node(2),
-						controller: nil,
-						flowTable:  nil,
+						topoNode:    simple.Node(2),
+						controllers: []*Controller{},
+						flowTable:   nil,
 					},
 				},
 			},
@@ -59,14 +59,14 @@ func TestNewController(t *testing.T) {
 				tu.AssertEqualMaps(t, om.New[K, V](), &c.newFlowTables)
 				assert.ElementsMatch(t, []*Switch{
 					{
-						topoNode:   simple.Node(1),
-						controller: c,
-						flowTable:  nil,
+						topoNode:    simple.Node(1),
+						controllers: []*Controller{c},
+						flowTable:   nil,
 					},
 					{
-						topoNode:   simple.Node(2),
-						controller: c,
-						flowTable:  nil,
+						topoNode:    simple.Node(2),
+						controllers: []*Controller{c},
+						flowTable:   nil,
 					},
 				}, c.switches)
 			},
@@ -76,9 +76,9 @@ func TestNewController(t *testing.T) {
 			args: args{
 				switches: []*Switch{
 					{
-						topoNode:   simple.Node(3),
-						controller: nil,
-						flowTable:  nil,
+						topoNode:    simple.Node(3),
+						controllers: []*Controller{},
+						flowTable:   nil,
 					},
 				},
 			},
@@ -88,9 +88,9 @@ func TestNewController(t *testing.T) {
 				tu.AssertEqualMaps(t, om.New[K, V](), c.NewFlowTables())
 				assert.ElementsMatch(t, []*Switch{
 					{
-						topoNode:   simple.Node(3),
-						controller: c,
-						flowTable:  nil,
+						topoNode:    simple.Node(3),
+						controllers: []*Controller{c},
+						flowTable:   nil,
 					},
 				}, c.Switches())
 			},
@@ -100,9 +100,9 @@ func TestNewController(t *testing.T) {
 			args: args{
 				switches: []*Switch{
 					{
-						topoNode:   simple.Node(2),
-						controller: nil,
-						flowTable:  nil,
+						topoNode:    simple.Node(2),
+						controllers: []*Controller{},
+						flowTable:   nil,
 					},
 					nil,
 				},
@@ -166,14 +166,14 @@ func TestController_FindSwitch(t *testing.T) {
 				id: 1,
 				switches: []*Switch{
 					{
-						topoNode:   simple.Node(1),
-						controller: nil,
-						flowTable:  &FlowTable{},
+						topoNode:    simple.Node(1),
+						controllers: []*Controller{},
+						flowTable:   &FlowTable{},
 					},
 					{
-						topoNode:   simple.Node(2),
-						controller: nil,
-						flowTable:  &FlowTable{},
+						topoNode:    simple.Node(2),
+						controllers: []*Controller{},
+						flowTable:   &FlowTable{},
 					},
 				},
 				newFlowTables: *om.New[K, V](),
@@ -189,19 +189,19 @@ func TestController_FindSwitch(t *testing.T) {
 				id: 1,
 				switches: []*Switch{
 					{
-						topoNode:   simple.Node(1),
-						controller: nil,
-						flowTable:  &FlowTable{},
+						topoNode:    simple.Node(1),
+						controllers: []*Controller{},
+						flowTable:   &FlowTable{},
 					},
 					{
-						topoNode:   simple.Node(2),
-						controller: nil,
-						flowTable:  &FlowTable{},
+						topoNode:    simple.Node(2),
+						controllers: []*Controller{},
+						flowTable:   &FlowTable{},
 					},
 					{
-						topoNode:   simple.Node(14),
-						controller: nil,
-						flowTable:  &FlowTable{},
+						topoNode:    simple.Node(14),
+						controllers: []*Controller{},
+						flowTable:   &FlowTable{},
 					},
 				},
 				newFlowTables: *om.New[K, V](),
@@ -210,9 +210,9 @@ func TestController_FindSwitch(t *testing.T) {
 				nodeId: 14,
 			},
 			want: &Switch{
-				topoNode:   simple.Node(14),
-				controller: nil,
-				flowTable:  &FlowTable{},
+				topoNode:    simple.Node(14),
+				controllers: []*Controller{},
+				flowTable:   &FlowTable{},
 			},
 		},
 	}
@@ -341,16 +341,16 @@ func TestController_AddNewFlowRules(t *testing.T) {
 				id: 1,
 				switches: []*Switch{
 					{
-						topoNode:   simple.Node(1),
-						controller: nil,
-						flowTable:  &FlowTable{},
-						links:      []*Link{},
+						topoNode:    simple.Node(1),
+						controllers: []*Controller{},
+						flowTable:   &FlowTable{},
+						links:       []*Link{},
 					},
 					{
-						topoNode:   simple.Node(2),
-						controller: nil,
-						flowTable:  &FlowTable{},
-						links:      []*Link{},
+						topoNode:    simple.Node(2),
+						controllers: []*Controller{},
+						flowTable:   &FlowTable{},
+						links:       []*Link{},
 					},
 				},
 				newFlowTables: *om.New[K, V](),
@@ -369,16 +369,16 @@ func TestController_AddNewFlowRules(t *testing.T) {
 				id: 1,
 				switches: []*Switch{
 					{
-						topoNode:   simple.Node(1),
-						controller: nil,
-						flowTable:  getMockFT1(),
-						links:      []*Link{},
+						topoNode:    simple.Node(1),
+						controllers: []*Controller{},
+						flowTable:   getMockFT1(),
+						links:       []*Link{},
 					},
 					{
-						topoNode:   simple.Node(2),
-						controller: nil,
-						flowTable:  &FlowTable{},
-						links:      []*Link{},
+						topoNode:    simple.Node(2),
+						controllers: []*Controller{},
+						flowTable:   &FlowTable{},
+						links:       []*Link{},
 					},
 				},
 				newFlowTables: *newMap([]om.Pair[K, V]{
@@ -401,16 +401,16 @@ func TestController_AddNewFlowRules(t *testing.T) {
 				id: 1,
 				switches: []*Switch{
 					{
-						topoNode:   simple.Node(1),
-						controller: nil,
-						flowTable:  getMockFT1(),
-						links:      []*Link{},
+						topoNode:    simple.Node(1),
+						controllers: []*Controller{},
+						flowTable:   getMockFT1(),
+						links:       []*Link{},
 					},
 					{
-						topoNode:   simple.Node(2),
-						controller: nil,
-						flowTable:  &FlowTable{},
-						links:      []*Link{},
+						topoNode:    simple.Node(2),
+						controllers: []*Controller{},
+						flowTable:   &FlowTable{},
+						links:       []*Link{},
 					},
 				},
 				newFlowTables: *newMap([]om.Pair[K, V]{
@@ -441,16 +441,16 @@ func TestController_AddNewFlowRules(t *testing.T) {
 				id: 1,
 				switches: []*Switch{
 					{
-						topoNode:   simple.Node(1),
-						controller: nil,
-						flowTable:  getMockFT1(),
-						links:      []*Link{},
+						topoNode:    simple.Node(1),
+						controllers: []*Controller{},
+						flowTable:   getMockFT1(),
+						links:       []*Link{},
 					},
 					{
-						topoNode:   simple.Node(2),
-						controller: nil,
-						flowTable:  &FlowTable{},
-						links:      []*Link{},
+						topoNode:    simple.Node(2),
+						controllers: []*Controller{},
+						flowTable:   &FlowTable{},
+						links:       []*Link{},
 					},
 				},
 				newFlowTables: *newMap([]om.Pair[K, V]{
@@ -474,16 +474,16 @@ func TestController_AddNewFlowRules(t *testing.T) {
 				id: 1,
 				switches: []*Switch{
 					{
-						topoNode:   simple.Node(1),
-						controller: nil,
-						flowTable:  getMockFT1(),
-						links:      []*Link{},
+						topoNode:    simple.Node(1),
+						controllers: []*Controller{},
+						flowTable:   getMockFT1(),
+						links:       []*Link{},
 					},
 					{
-						topoNode:   simple.Node(2),
-						controller: nil,
-						flowTable:  &FlowTable{},
-						links:      []*Link{},
+						topoNode:    simple.Node(2),
+						controllers: []*Controller{},
+						flowTable:   &FlowTable{},
+						links:       []*Link{},
 					},
 				},
 				newFlowTables: *newMap([]om.Pair[K, V]{
@@ -525,16 +525,16 @@ func TestController_AddNewFlowRules(t *testing.T) {
 				id: 1,
 				switches: []*Switch{
 					{
-						topoNode:   simple.Node(1),
-						controller: nil,
-						flowTable:  getMockFT1(),
-						links:      []*Link{},
+						topoNode:    simple.Node(1),
+						controllers: []*Controller{},
+						flowTable:   getMockFT1(),
+						links:       []*Link{},
 					},
 					{
-						topoNode:   simple.Node(2),
-						controller: nil,
-						flowTable:  &FlowTable{},
-						links:      []*Link{},
+						topoNode:    simple.Node(2),
+						controllers: []*Controller{},
+						flowTable:   &FlowTable{},
+						links:       []*Link{},
 					},
 				},
 				newFlowTables: *newMap([]om.Pair[K, V]{
@@ -565,16 +565,16 @@ func TestController_AddNewFlowRules(t *testing.T) {
 				id: 1,
 				switches: []*Switch{
 					{
-						topoNode:   simple.Node(1),
-						controller: nil,
-						flowTable:  getMockFT1(),
-						links:      []*Link{},
+						topoNode:    simple.Node(1),
+						controllers: []*Controller{},
+						flowTable:   getMockFT1(),
+						links:       []*Link{},
 					},
 					{
-						topoNode:   simple.Node(2),
-						controller: nil,
-						flowTable:  &FlowTable{},
-						links:      []*Link{},
+						topoNode:    simple.Node(2),
+						controllers: []*Controller{},
+						flowTable:   &FlowTable{},
+						links:       []*Link{},
 					},
 				},
 				newFlowTables: *newMap([]om.Pair[K, V]{

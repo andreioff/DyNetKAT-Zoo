@@ -320,6 +320,26 @@ func (n *Network) AddControllersRandomSplit(controllersNr uint) error {
 	return nil
 }
 
+/*
+Adds 'controllersNr' controllers to the network, assigning all of them to every switch in the network.
+*/
+func (n *Network) AddControllersNoSplit(controllersNr uint) error {
+	if controllersNr == 0 {
+		return util.NewError(util.ErrControllersNrAtLeast1)
+	}
+
+	for range controllersNr {
+		c, err := NewController(int64(len(n.controllers)), n.switches)
+		if err != nil {
+			return err
+		}
+
+		n.controllers = append(n.controllers, c)
+	}
+
+	return nil
+}
+
 func mapNodeToSwitch(switches []*Switch) om.OrderedMap[int64, *Switch] {
 	nodeIdToSwitch := *om.New[int64, *Switch](len(switches))
 

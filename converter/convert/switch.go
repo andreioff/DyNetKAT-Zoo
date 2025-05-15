@@ -8,9 +8,9 @@ import (
 )
 
 type Switch struct {
-	topoNode   graph.Node
-	controller *Controller
-	flowTable  *FlowTable
+	topoNode    graph.Node
+	controllers []*Controller
+	flowTable   *FlowTable
 
 	links []*Link // outgoing links
 }
@@ -25,10 +25,10 @@ func NewSwitch(node graph.Node, links []*Link) (*Switch, error) {
 	}
 
 	return &Switch{
-		topoNode:   node,
-		controller: nil,
-		flowTable:  NewFlowTable(),
-		links:      links,
+		topoNode:    node,
+		controllers: []*Controller{},
+		flowTable:   NewFlowTable(),
+		links:       links,
 	}, nil
 }
 
@@ -57,12 +57,25 @@ func (s *Switch) FlowTable() *FlowTable {
 	return s.flowTable
 }
 
-func (s *Switch) Controller() *Controller {
-	return s.controller
+func (s *Switch) Controllers() []*Controller {
+	return s.controllers
 }
 
-func (s *Switch) SetController(c *Controller) {
-	s.controller = c
+func (s *Switch) AddController(c *Controller) {
+	if c == nil {
+		return
+	}
+	found := false
+	for _, swC := range s.controllers {
+		if swC.ID() == c.ID() {
+			found = true
+			break
+		}
+	}
+	if found {
+		return
+	}
+	s.controllers = append(s.controllers, c)
 }
 
 /*

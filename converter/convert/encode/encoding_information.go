@@ -41,12 +41,17 @@ func getUsedSwitchesFTs(switches []*convert.Switch) om.OrderedMap[int64, *conver
 	usedSwitchFTs := *om.New[int64, *convert.FlowTable]()
 
 	for _, sw := range switches {
-		c := sw.Controller()
 		filteredFT := sw.FlowTable().Filter(func(fr convert.FlowRule) bool {
 			return !fr.IsLink()
 		})
 
-		if filteredFT.Entries().Len() > 0 || (c != nil && c.IsUpdatingSwitch(sw.TopoNode().ID())) {
+		isUpdatingSwitch := false
+		for _, c := range sw.Controllers() {
+			if c != nil && c.IsUpdatingSwitch(sw.TopoNode().ID()) {
+				isUpdatingSwitch = true
+			}
+		}
+		if filteredFT.Entries().Len() > 0 || isUpdatingSwitch {
 			usedSwitchFTs.Set(sw.TopoNode().ID(), filteredFT)
 		}
 	}

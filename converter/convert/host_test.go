@@ -12,10 +12,10 @@ import (
 
 func TestConvert_NewHost(t *testing.T) {
 	mockSw := &Switch{
-		topoNode:   simple.Node(0),
-		controller: nil,
-		flowTable:  nil,
-		links:      []*Link{},
+		topoNode:    simple.Node(0),
+		controllers: []*Controller{},
+		flowTable:   nil,
+		links:       []*Link{},
 	}
 
 	cases := map[string]struct {

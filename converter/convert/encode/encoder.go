@@ -9,6 +9,7 @@ const (
 	CONTROLLER_BASE_NAME = "C"
 	UP_CHANNEL_NAME      = "UP"
 	HELP_CHANNEL_NAME    = "HELP"
+	ASCII_QUOTE          = "\""
 )
 
 type SymbolEncoding struct {
@@ -30,6 +31,25 @@ type SymbolEncoding struct {
 	PAR    string // Parallel composition
 	DEF    string // Defines
 	NONDET string // non-deterministic choice symbol
+}
+
+var DYNETKAT_ASCII_SYMBOLS = SymbolEncoding{
+	ONE:    " one ",
+	ZERO:   " zero ",
+	EQ:     "=",
+	OR:     " + ",
+	AND:    " . ",
+	NEG:    " NEGATE ", // not needed, but just in case
+	STAR:   "* ",
+	ASSIGN: "<-",
+
+	BOT:    " bot ",
+	SEQ:    " ; ",
+	RECV:   " ? ",
+	SEND:   " ! ",
+	PAR:    " || ",
+	DEF:    " DEFINE ", // not needed, but just in case
+	NONDET: " o+ ",
 }
 
 type NetworkEncoder interface {

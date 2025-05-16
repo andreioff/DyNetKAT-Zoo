@@ -9,15 +9,15 @@ import (
 )
 
 type ControllerUpdate struct {
-	flowTables  om.OrderedMap[int64, *convert.FlowTable]
-	frSequences []*convert.FlowRuleSequence
+	FlowTables  om.OrderedMap[int64, *convert.FlowTable]
+	FrSequences []*convert.FlowRuleSequence
 }
 
 type EncodingInfo struct {
-	nodeIdToIndex   om.OrderedMap[int64, int]                // maps switch node id to index
-	usedSwitchFTs   om.OrderedMap[int64, *convert.FlowTable] // maps switch node id to flow table of switch
-	usedContUpdates []ControllerUpdate                       // maps switch node id to new flow table
-	links           []convert.SimpleNetKATPolicy
+	NodeIdToIndex   om.OrderedMap[int64, int]                // maps switch node id to index
+	UsedSwitchFTs   om.OrderedMap[int64, *convert.FlowTable] // maps switch node id to flow table of switch
+	UsedContUpdates []ControllerUpdate                       // maps switch node id to new flow table
+	Links           []convert.SimpleNetKATPolicy
 }
 
 func NewEncodingInfo(n *convert.Network) (EncodingInfo, error) {
@@ -30,10 +30,10 @@ func NewEncodingInfo(n *convert.Network) (EncodingInfo, error) {
 	}
 
 	return EncodingInfo{
-		nodeIdToIndex:   *om.New[int64, int](),
-		usedSwitchFTs:   usedSwitchFTs,
-		usedContUpdates: usedContUpdates,
-		links:           links,
+		NodeIdToIndex:   *om.New[int64, int](),
+		UsedSwitchFTs:   usedSwitchFTs,
+		UsedContUpdates: usedContUpdates,
+		Links:           links,
 	}, nil
 }
 
@@ -68,17 +68,17 @@ func getUsedControllerUpdates(
 
 	for _, c := range controllers {
 		cUpdate := ControllerUpdate{
-			flowTables:  *om.New[int64, *convert.FlowTable](),
-			frSequences: []*convert.FlowRuleSequence{},
+			FlowTables:  *om.New[int64, *convert.FlowTable](),
+			FrSequences: []*convert.FlowRuleSequence{},
 		}
 		for pair := c.NewFlowTables().Oldest(); pair != nil; pair = pair.Next() {
-			cUpdate.flowTables.Set(pair.Key, pair.Value.Filter(ftPred))
+			cUpdate.FlowTables.Set(pair.Key, pair.Value.Filter(ftPred))
 		}
 		for _, frs := range c.NewFlowRuleSequences() {
-			cUpdate.frSequences = append(cUpdate.frSequences, frs.Filter(frsPred))
+			cUpdate.FrSequences = append(cUpdate.FrSequences, frs.Filter(frsPred))
 		}
 
-		if cUpdate.flowTables.Len() > 0 || len(cUpdate.frSequences) > 0 {
+		if cUpdate.FlowTables.Len() > 0 || len(cUpdate.FrSequences) > 0 {
 			usedControllerUpdates = append(usedControllerUpdates, cUpdate)
 		}
 	}
@@ -112,8 +112,8 @@ func getLinksAsNetKATPolicies(
 }
 
 func (ei EncodingInfo) FindNewFT(nodeId int64) (*convert.FlowTable, bool) {
-	for _, update := range ei.usedContUpdates {
-		newFt, exists := update.flowTables.Get(nodeId)
+	for _, update := range ei.UsedContUpdates {
+		newFt, exists := update.FlowTables.Get(nodeId)
 		if exists {
 			return newFt, true
 		}
@@ -123,10 +123,10 @@ func (ei EncodingInfo) FindNewFT(nodeId int64) (*convert.FlowTable, bool) {
 }
 
 func (ei EncodingInfo) GetSwIndex(nodeId int64) int {
-	indx, exists := ei.nodeIdToIndex.Get(nodeId)
+	indx, exists := ei.NodeIdToIndex.Get(nodeId)
 	if !exists {
-		ei.nodeIdToIndex.Set(nodeId, ei.nodeIdToIndex.Len())
-		indx, _ = ei.nodeIdToIndex.Get(nodeId)
+		ei.NodeIdToIndex.Set(nodeId, ei.NodeIdToIndex.Len())
+		indx, _ = ei.NodeIdToIndex.Get(nodeId)
 	}
 
 	return indx
@@ -135,4 +135,15 @@ func (ei EncodingInfo) GetSwIndex(nodeId int64) int {
 func (ei EncodingInfo) GetSwIndexStr(nodeId int64) string {
 	indx := ei.GetSwIndex(nodeId)
 	return fmt.Sprintf("%d", indx)
+}
+
+/*
+Returns a deep copy of the flow table of every switch
+*/
+func (ei EncodingInfo) CopyUsedSwitchesFTs() *om.OrderedMap[int64, *convert.FlowTable] {
+	flowTableCopy := om.New[int64, *convert.FlowTable]()
+	for pair := ei.UsedSwitchFTs.Oldest(); pair != nil; pair = pair.Next() {
+		flowTableCopy.Set(pair.Key, pair.Value.Copy())
+	}
+	return flowTableCopy
 }

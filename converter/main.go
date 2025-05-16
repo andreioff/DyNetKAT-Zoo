@@ -5,25 +5,15 @@ import (
 	"log"
 
 	"utwente.nl/topology-to-dynetkat-coverter/convert/encode"
+	je "utwente.nl/topology-to-dynetkat-coverter/convert/encode/json_encoder_whole_network_updates"
 	behavior "utwente.nl/topology-to-dynetkat-coverter/convert/network_behavior"
 	"utwente.nl/topology-to-dynetkat-coverter/util"
 )
 
 const (
-	DIR        = "../topologyzoo/sources/graphml/"
-	OUTPUT_DIR = "./output/"
+	DIR        = "../topologyzoo/sources/graphml"
+	OUTPUT_DIR = "./output"
 )
-
-var NETWORK_IDS []string = []string{
-	"Atmnet",        // 21 nodes
-	"Arpanet196912", // 4 nodes
-	"Dataxchange",   // 6 nodes
-	"Renam",         // 5 nodes
-	"Netrail",       // 7 nodes
-	"Getnet",        // 7 nodes
-	"Kdl",           // 754 nodes -- largest network
-}
-var NETWORK_ID string = NETWORK_IDS[0]
 
 func main() {
 	graphMLs, err := util.ReadGraphMLs(DIR)
@@ -46,7 +36,7 @@ func generateEncoding(topoName string, topo util.Graph, seed int64) {
 	config := behavior.BehaviorConfig{
 		Hosts_nr:         0,
 		Outside_hosts_nr: uint(topo.Nodes().Len() / 2),
-		Controllers_nr:   1,
+		Controllers_nr:   2,
 	}
 	if topo.Nodes().Len() < 10 {
 		config.Outside_hosts_nr = uint(topo.Nodes().Len())
@@ -55,7 +45,7 @@ func generateEncoding(topoName string, topo util.Graph, seed int64) {
 
 	network, err := behavior.NewNetworkWithBehavior(
 		topo,
-		&behavior.PairwiseHostConn{},
+		behavior.NewPairwiseHostConn(true),
 		config,
 	)
 	if err != nil {
@@ -67,7 +57,7 @@ func generateEncoding(topoName string, topo util.Graph, seed int64) {
 		log.Fatalf("Error: %s\n", err.Error())
 	}
 
-	fmtNet, err := encode.NewJsonEncoder().Encode(ei)
+	fmtNet, err := je.NewJsonEncoder().Encode(ei)
 	if err != nil {
 		log.Println("Failed to encode data!")
 		log.Printf("Error: %s\n", err.Error())

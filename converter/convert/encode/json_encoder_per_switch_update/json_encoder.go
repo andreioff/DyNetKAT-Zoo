@@ -1,4 +1,4 @@
-package encode
+package json_encoder_per_switch_updates
 
 import (
 	"bytes"
@@ -8,30 +8,8 @@ import (
 
 	om "github.com/wk8/go-ordered-map/v2"
 	"utwente.nl/topology-to-dynetkat-coverter/convert"
+	en "utwente.nl/topology-to-dynetkat-coverter/convert/encode"
 )
-
-const (
-	ASCII_QUOTE = "\""
-)
-
-var DYNETKAT_ASCII_SYMBOLS = SymbolEncoding{
-	ONE:    " one ",
-	ZERO:   " zero ",
-	EQ:     "=",
-	OR:     " + ",
-	AND:    " . ",
-	NEG:    " NEGATE ", // not needed, but just in case
-	STAR:   " * ",
-	ASSIGN: "<-",
-
-	BOT:    " bot ",
-	SEQ:    " ; ",
-	RECV:   " ? ",
-	SEND:   " ! ",
-	PAR:    " || ",
-	DEF:    " DEFINE ", // not needed, but just in case
-	NONDET: " o+ ",
-}
 
 // JSON structs
 type DNKNetwork struct {
@@ -82,7 +60,7 @@ func getOrSetDNKSwitch(dnkSwMap map[int64]*DNKSwitch, swId int64) *DNKSwitch {
 }
 
 type JsonEncoder struct {
-	sym           SymbolEncoding
+	sym           en.SymbolEncoding
 	nonDetUpdates bool
 }
 
@@ -90,14 +68,14 @@ type JsonEncoder struct {
 nonDetUpdates: whether to install the flow table updates of the controllers in non-deterministically.
 By default they are installed in sequence (using ;)
 */
-func NewJsonEncoder(nonDetUpdates bool) NetworkEncoder {
+func NewJsonEncoder(nonDetUpdates bool) en.NetworkEncoder {
 	return JsonEncoder{
-		sym:           DYNETKAT_ASCII_SYMBOLS,
+		sym:           en.DYNETKAT_ASCII_SYMBOLS,
 		nonDetUpdates: nonDetUpdates,
 	}
 }
 
-func (je JsonEncoder) SymbolEncoding() SymbolEncoding {
+func (je JsonEncoder) SymbolEncoding() en.SymbolEncoding {
 	return je.sym
 }
 
@@ -105,7 +83,7 @@ func (je JsonEncoder) ProactiveSwitch() bool {
 	return false
 }
 
-func (je JsonEncoder) Encode(ei EncodingInfo) (string, error) {
+func (je JsonEncoder) Encode(ei en.EncodingInfo) (string, error) {
 	fmtSwitches := je.encodeSwitches(ei)
 	fmtControllers := je.encodeControllers(ei)
 	links := je.encodeLinks(ei)
@@ -142,10 +120,10 @@ func (je JsonEncoder) buildSeqExpr(exprs []string) string {
 	return sb.String()
 }
 
-func (je JsonEncoder) encodeLinks(ei EncodingInfo) string {
+func (je JsonEncoder) encodeLinks(ei en.EncodingInfo) string {
 	var sb strings.Builder
 	prefix := ""
-	for _, link := range ei.links {
+	for _, link := range ei.Links {
 		sb.WriteString(prefix)
 		sb.WriteString(link.ToString(
 			je.sym.AND,
@@ -157,15 +135,15 @@ func (je JsonEncoder) encodeLinks(ei EncodingInfo) string {
 	return sb.String()
 }
 
-func (je JsonEncoder) encodeSwitches(ei EncodingInfo) map[string]DNKSwitch {
+func (je JsonEncoder) encodeSwitches(ei en.EncodingInfo) map[string]DNKSwitch {
 	dnkSwMap := make(map[int64]*DNKSwitch)
-	for _, u := range ei.usedContUpdates {
-		je.collectSwFlowRuleUpdates(dnkSwMap, u.frSequences, ei)
-		je.collectSwFlowTableUpdates(dnkSwMap, u.flowTables, ei)
+	for _, u := range ei.UsedContUpdates {
+		je.collectSwFlowRuleUpdates(dnkSwMap, u.FrSequences, ei)
+		je.collectSwFlowTableUpdates(dnkSwMap, u.FlowTables, ei)
 	}
 
 	fmtDnkSwitches := make(map[string]DNKSwitch)
-	for pair := ei.usedSwitchFTs.Oldest(); pair != nil; pair = pair.Next() {
+	for pair := ei.UsedSwitchFTs.Oldest(); pair != nil; pair = pair.Next() {
 		swId, initialFt := pair.Key, pair.Value.ToNetKATStr(
 			je.sym.AND,
 			je.sym.EQ,
@@ -174,7 +152,7 @@ func (je JsonEncoder) encodeSwitches(ei EncodingInfo) map[string]DNKSwitch {
 		)
 		dnkSwitch := getOrSetDNKSwitch(dnkSwMap, swId)
 		dnkSwitch.InitialFlowTable = initialFt
-		fmtDnkSwitches[SW_BASE_NAME+ei.GetSwIndexStr(swId)] = *dnkSwitch
+		fmtDnkSwitches[en.SW_BASE_NAME+ei.GetSwIndexStr(swId)] = *dnkSwitch
 	}
 
 	return fmtDnkSwitches
@@ -183,7 +161,7 @@ func (je JsonEncoder) encodeSwitches(ei EncodingInfo) map[string]DNKSwitch {
 func (je JsonEncoder) collectSwFlowRuleUpdates(
 	dnkSwMap map[int64]*DNKSwitch,
 	frSeqs []*convert.FlowRuleSequence,
-	ei EncodingInfo,
+	ei en.EncodingInfo,
 ) {
 	for _, seq := range frSeqs {
 		firstEntry := seq.Entries()[0]
@@ -193,7 +171,7 @@ func (je JsonEncoder) collectSwFlowRuleUpdates(
 			dnkSw := getOrSetDNKSwitch(dnkSwMap, entry.SwitchId)
 			swIndxStr := ei.GetSwIndexStr(entry.SwitchId)
 			swDirUpdate := newDNKDirectUpdate(
-				FLOW_MOD_CHANNEL+swIndxStr,
+				en.FLOW_MOD_CHANNEL+swIndxStr,
 				entry.ToNetKATPolicy().ToString(je.sym.AND, je.sym.EQ, je.sym.ASSIGN),
 				true,
 			)
@@ -206,14 +184,14 @@ func (je JsonEncoder) collectPiPoSwitchComm(
 	dnkSwMap map[int64]*DNKSwitch,
 	swId int64,
 	policy convert.SimpleNetKATPolicy,
-	ei EncodingInfo,
+	ei en.EncodingInfo,
 ) {
 	dnkSw := getOrSetDNKSwitch(dnkSwMap, swId)
 	swIndxStr := ei.GetSwIndexStr(swId)
 	swReqUpdate := newDNKRequestedUpdate(
-		PACKET_IN_CHANNEL+swIndxStr,
+		en.PACKET_IN_CHANNEL+swIndxStr,
 		policy.TestToString(je.sym.AND, je.sym.EQ),
-		PACKET_OUT_CHANNEL+swIndxStr,
+		en.PACKET_OUT_CHANNEL+swIndxStr,
 		policy.ToString(je.sym.AND, je.sym.EQ, je.sym.ASSIGN),
 	)
 	dnkSw.RequestedUpdates = append(dnkSw.RequestedUpdates, swReqUpdate)
@@ -222,7 +200,7 @@ func (je JsonEncoder) collectPiPoSwitchComm(
 func (je JsonEncoder) collectSwFlowTableUpdates(
 	dnkSwMap map[int64]*DNKSwitch,
 	ftUpdates om.OrderedMap[int64, *convert.FlowTable],
-	ei EncodingInfo,
+	ei en.EncodingInfo,
 ) {
 	for pair := ftUpdates.Oldest(); pair != nil; pair = pair.Next() {
 		swId, newFT := pair.Key, pair.Value.ToNetKATStr(
@@ -234,17 +212,17 @@ func (je JsonEncoder) collectSwFlowTableUpdates(
 		dnkSw := getOrSetDNKSwitch(dnkSwMap, swId)
 
 		swIndxStr := ei.GetSwIndexStr(swId)
-		swDirUpdate := newDNKDirectUpdate(UP_CHANNEL_NAME+swIndxStr, newFT, false)
+		swDirUpdate := newDNKDirectUpdate(en.UP_CHANNEL_NAME+swIndxStr, newFT, false)
 		dnkSw.DirectUpdates = append(dnkSw.DirectUpdates, swDirUpdate)
 	}
 }
 
-func (je JsonEncoder) encodeControllers(ei EncodingInfo) map[string]string {
+func (je JsonEncoder) encodeControllers(ei en.EncodingInfo) map[string]string {
 	fmtConts := make(map[string]string)
-	for i, update := range ei.usedContUpdates {
-		cName := CONTROLLER_BASE_NAME + fmt.Sprintf("%d", i)
-		seqEnc := je.encodeContFRSequences(cName, update.frSequences, ei)
-		ftsEnc := je.encodeContFlowTables(cName, update.flowTables, ei)
+	for i, update := range ei.UsedContUpdates {
+		cName := en.CONTROLLER_BASE_NAME + fmt.Sprintf("%d", i)
+		seqEnc := je.encodeContFRSequences(cName, update.FrSequences, ei)
+		ftsEnc := je.encodeContFlowTables(cName, update.FlowTables, ei)
 
 		sep := je.sym.NONDET
 		if seqEnc == "" || ftsEnc == "" {
@@ -259,7 +237,7 @@ func (je JsonEncoder) encodeControllers(ei EncodingInfo) map[string]string {
 func (je JsonEncoder) encodeContFRSequences(
 	cName string,
 	seqs []*convert.FlowRuleSequence,
-	ei EncodingInfo,
+	ei en.EncodingInfo,
 ) string {
 	var sb strings.Builder
 	prefix := ""
@@ -278,7 +256,7 @@ func (je JsonEncoder) encodeContFRSequences(
 func (je JsonEncoder) encodeContFRSequence(
 	cName string,
 	seq *convert.FlowRuleSequence,
-	ei EncodingInfo,
+	ei en.EncodingInfo,
 ) string {
 	if seq == nil || len(seq.Entries()) == 0 {
 		return ""
@@ -287,7 +265,7 @@ func (je JsonEncoder) encodeContFRSequence(
 	fmtSeqTerms := je.encodePiPoComm(seq.Entries()[0], true, ei)
 	for _, e := range seq.Entries()[1:] {
 		swIndxStr := ei.GetSwIndexStr(e.SwitchId)
-		fmComm := je.encodeSendComm(FLOW_MOD_CHANNEL, swIndxStr, e.ToNetKATPolicy())
+		fmComm := je.encodeSendComm(en.FLOW_MOD_CHANNEL, swIndxStr, e.ToNetKATPolicy())
 		fmtSeqTerms = append(fmtSeqTerms, fmComm)
 	}
 	fmtSeqTerms = append(fmtSeqTerms, cName)
@@ -297,7 +275,7 @@ func (je JsonEncoder) encodeContFRSequence(
 func (je JsonEncoder) encodePiPoComm(
 	entry convert.FRSequenceEntry,
 	recvFirst bool,
-	ei EncodingInfo,
+	ei en.EncodingInfo,
 ) []string {
 	commOp1 := je.sym.SEND
 	commOp2 := je.sym.RECV
@@ -309,12 +287,16 @@ func (je JsonEncoder) encodePiPoComm(
 	swIndxStr := ei.GetSwIndexStr(entry.SwitchId)
 
 	nkEntry := entry.ToNetKATPolicy()
-	pkt0Test := ASCII_QUOTE + nkEntry.TestToString(je.sym.AND, je.sym.EQ) + ASCII_QUOTE
-	pkt0Policy := ASCII_QUOTE + nkEntry.ToString(je.sym.AND, je.sym.EQ, je.sym.ASSIGN) + ASCII_QUOTE
+	pkt0Test := en.ASCII_QUOTE + nkEntry.TestToString(je.sym.AND, je.sym.EQ) + en.ASCII_QUOTE
+	pkt0Policy := en.ASCII_QUOTE + nkEntry.ToString(
+		je.sym.AND,
+		je.sym.EQ,
+		je.sym.ASSIGN,
+	) + en.ASCII_QUOTE
 
 	return []string{
-		"(" + PACKET_IN_CHANNEL + swIndxStr + commOp1 + pkt0Test + ")",
-		"(" + PACKET_OUT_CHANNEL + swIndxStr + commOp2 + pkt0Policy + ")",
+		"(" + en.PACKET_IN_CHANNEL + swIndxStr + commOp1 + pkt0Test + ")",
+		"(" + en.PACKET_OUT_CHANNEL + swIndxStr + commOp2 + pkt0Policy + ")",
 	}
 }
 
@@ -323,14 +305,18 @@ func (je JsonEncoder) encodeSendComm(
 	swIndxStr string,
 	policy convert.SimpleNetKATPolicy,
 ) string {
-	policyStr := ASCII_QUOTE + policy.ToString(je.sym.AND, je.sym.EQ, je.sym.ASSIGN) + ASCII_QUOTE
+	policyStr := en.ASCII_QUOTE + policy.ToString(
+		je.sym.AND,
+		je.sym.EQ,
+		je.sym.ASSIGN,
+	) + en.ASCII_QUOTE
 	return "(" + chBaseName + swIndxStr + je.sym.SEND + policyStr + ")"
 }
 
 func (je JsonEncoder) encodeContFlowTables(
 	cName string,
 	flowTables om.OrderedMap[int64, *convert.FlowTable],
-	ei EncodingInfo,
+	ei en.EncodingInfo,
 ) string {
 	ftCommStrs := []string{}
 	for pair := flowTables.Oldest(); pair != nil; pair = pair.Next() {
@@ -360,6 +346,6 @@ func (je JsonEncoder) encodeFlowTableComm(
 	commSym string,
 ) string {
 	policy := flowTable.ToNetKATStr(je.sym.AND, je.sym.EQ, je.sym.ASSIGN, je.sym.OR)
-	policy = ASCII_QUOTE + policy + ASCII_QUOTE
-	return "(" + UP_CHANNEL_NAME + swIndexStr + commSym + policy + ")"
+	policy = en.ASCII_QUOTE + policy + en.ASCII_QUOTE
+	return "(" + en.UP_CHANNEL_NAME + swIndexStr + commSym + policy + ")"
 }

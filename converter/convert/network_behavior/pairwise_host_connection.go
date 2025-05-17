@@ -26,8 +26,8 @@ type PairwiseHostConn struct {
 
 /*
 alternateDirection: whether to alternate the direction of the host connection between controllers.
-By default, each controller is assigned a unique host pair and installs the
-connection in both ways, i.e. from host1 to host2 and from host2 to host1.
+By default, each controller is assigned a unique host pair and establishes
+a one way connection between them, i.e. from host1 to host2.
 */
 func NewPairwiseHostConn(alternateDirection bool) *PairwiseHostConn {
 	return &PairwiseHostConn{net: nil, alternateDirection: alternateDirection}
